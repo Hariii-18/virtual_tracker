@@ -19,6 +19,8 @@ export interface Profile {
   /** @nullable */
   profession?: ProfileProfession;
   /** @nullable */
+  customProfession?: string | null;
+  /** @nullable */
   height?: number | null;
   /** @nullable */
   weight?: number | null;

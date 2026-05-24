@@ -27,6 +27,7 @@ import type {
   AuthResponse,
   DashboardSummary,
   ErrorResponse,
+  GetActivityBreakdownParams,
   GetHistoryParams,
   HealthStatus,
   HistoryEntry,
@@ -38,6 +39,7 @@ import type {
   ProfileUpdate,
   Recommendations,
   RegisterInput,
+  SeedActivitiesInput,
   User,
   WeeklyAnalytics
 } from './api.schemas';
@@ -1237,20 +1239,98 @@ export function useGetMonthlyAnalytics<TData = Awaited<ReturnType<typeof getMont
 
 
 
-export const getGetActivityBreakdownUrl = () => {
+export const getSeedActivitiesUrl = () => {
 
 
 
 
-  return `/api/analytics/activity-breakdown`
+  return `/api/activities/seed`
+}
+
+/**
+ * @summary Seed predefined activities based on profession
+ */
+export const seedActivities = async (seedActivitiesInput: SeedActivitiesInput, options?: RequestInit): Promise<Activity[]> => {
+
+  return customFetch<Activity[]>(getSeedActivitiesUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      seedActivitiesInput,)
+  }
+);}
+
+
+
+
+export const getSeedActivitiesMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof seedActivities>>, TError,{data: BodyType<SeedActivitiesInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof seedActivities>>, TError,{data: BodyType<SeedActivitiesInput>}, TContext> => {
+
+const mutationKey = ['seedActivities'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof seedActivities>>, {data: BodyType<SeedActivitiesInput>}> = (props) => {
+          const {data} = props ?? {};
+
+          return  seedActivities(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type SeedActivitiesMutationResult = NonNullable<Awaited<ReturnType<typeof seedActivities>>>
+    export type SeedActivitiesMutationBody = BodyType<SeedActivitiesInput>
+    export type SeedActivitiesMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Seed predefined activities based on profession
+ */
+export const useSeedActivities = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof seedActivities>>, TError,{data: BodyType<SeedActivitiesInput>}, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof seedActivities>>,
+        TError,
+        {data: BodyType<SeedActivitiesInput>},
+        TContext
+      > => {
+      return useMutation(getSeedActivitiesMutationOptions(options));
+    }
+
+export const getGetActivityBreakdownUrl = (params?: GetActivityBreakdownParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/analytics/activity-breakdown?${stringifiedParams}` : `/api/analytics/activity-breakdown`
 }
 
 /**
  * @summary Get activity distribution (productive vs non-productive)
  */
-export const getActivityBreakdown = async ( options?: RequestInit): Promise<ActivityBreakdown> => {
+export const getActivityBreakdown = async (params?: GetActivityBreakdownParams, options?: RequestInit): Promise<ActivityBreakdown> => {
 
-  return customFetch<ActivityBreakdown>(getGetActivityBreakdownUrl(),
+  return customFetch<ActivityBreakdown>(getGetActivityBreakdownUrl(params),
   {
     ...options,
     method: 'GET'
@@ -1263,23 +1343,23 @@ export const getActivityBreakdown = async ( options?: RequestInit): Promise<Acti
 
 
 
-export const getGetActivityBreakdownQueryKey = () => {
+export const getGetActivityBreakdownQueryKey = (params?: GetActivityBreakdownParams,) => {
     return [
-    `/api/analytics/activity-breakdown`
+    `/api/analytics/activity-breakdown`, ...(params ? [params] : [])
     ] as const;
     }
 
 
-export const getGetActivityBreakdownQueryOptions = <TData = Awaited<ReturnType<typeof getActivityBreakdown>>, TError = ErrorType<unknown>>( options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getActivityBreakdown>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+export const getGetActivityBreakdownQueryOptions = <TData = Awaited<ReturnType<typeof getActivityBreakdown>>, TError = ErrorType<unknown>>(params?: GetActivityBreakdownParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getActivityBreakdown>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
 
-  const queryKey =  queryOptions?.queryKey ?? getGetActivityBreakdownQueryKey();
+  const queryKey =  queryOptions?.queryKey ?? getGetActivityBreakdownQueryKey(params);
 
 
 
-    const queryFn: QueryFunction<Awaited<ReturnType<typeof getActivityBreakdown>>> = ({ signal }) => getActivityBreakdown({ signal, ...requestOptions });
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getActivityBreakdown>>> = ({ signal }) => getActivityBreakdown(params, { signal, ...requestOptions });
 
 
 
@@ -1297,11 +1377,11 @@ export type GetActivityBreakdownQueryError = ErrorType<unknown>
  */
 
 export function useGetActivityBreakdown<TData = Awaited<ReturnType<typeof getActivityBreakdown>>, TError = ErrorType<unknown>>(
-  options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getActivityBreakdown>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
+ params?: GetActivityBreakdownParams, options?: { query?:UseQueryOptions<Awaited<ReturnType<typeof getActivityBreakdown>>, TError, TData>, request?: SecondParameter<typeof customFetch>}
 
  ):  UseQueryResult<TData, TError> & { queryKey: QueryKey } {
 
-  const queryOptions = getGetActivityBreakdownQueryOptions(options)
+  const queryOptions = getGetActivityBreakdownQueryOptions(params,options)
 
   const query = useQuery(queryOptions) as  UseQueryResult<TData, TError> & { queryKey: QueryKey };
 

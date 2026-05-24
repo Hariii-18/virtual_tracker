@@ -17,6 +17,7 @@ export const profilesTable = pgTable("profiles", {
   age: integer("age"),
   gender: text("gender"),
   profession: text("profession"),
+  customProfession: text("custom_profession"),
   height: real("height"),
   weight: real("weight"),
   goals: text("goals"),

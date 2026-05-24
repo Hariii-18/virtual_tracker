@@ -70,6 +70,7 @@ export const GetProfileResponse = zod.object({
   "age": zod.number().nullish(),
   "gender": zod.string().nullish(),
   "profession": zod.union([zod.literal('Student'),zod.literal('Employee'),zod.literal('Athlete'),zod.literal('Freelancer'),zod.literal('Custom'),zod.literal(null)]).nullish(),
+  "customProfession": zod.string().nullish(),
   "height": zod.number().nullish(),
   "weight": zod.number().nullish(),
   "goals": zod.string().nullish(),
@@ -86,6 +87,7 @@ export const UpdateProfileBody = zod.object({
   "age": zod.number().nullish(),
   "gender": zod.string().nullish(),
   "profession": zod.union([zod.literal('Student'),zod.literal('Employee'),zod.literal('Athlete'),zod.literal('Freelancer'),zod.literal('Custom'),zod.literal(null)]).nullish(),
+  "customProfession": zod.string().nullish(),
   "height": zod.number().nullish(),
   "weight": zod.number().nullish(),
   "goals": zod.string().nullish(),
@@ -101,6 +103,7 @@ export const UpdateProfileResponse = zod.object({
   "age": zod.number().nullish(),
   "gender": zod.string().nullish(),
   "profession": zod.union([zod.literal('Student'),zod.literal('Employee'),zod.literal('Athlete'),zod.literal('Freelancer'),zod.literal('Custom'),zod.literal(null)]).nullish(),
+  "customProfession": zod.string().nullish(),
   "height": zod.number().nullish(),
   "weight": zod.number().nullish(),
   "goals": zod.string().nullish(),
@@ -267,13 +270,29 @@ export const GetMonthlyAnalyticsResponse = zod.object({
   "activeDays": zod.number()
 })),
   "monthlyAvgScore": zod.number().optional(),
-  "consistencyPct": zod.number().optional()
+  "consistencyPct": zod.number().optional(),
+  "avgProductiveHours": zod.number().optional(),
+  "mostActiveCategory": zod.string().nullish(),
+  "improvementPct": zod.number().optional(),
+  "totalActiveDays": zod.number().optional()
+})
+
+
+/**
+ * @summary Seed predefined activities based on profession
+ */
+export const SeedActivitiesBody = zod.object({
+  "profession": zod.string()
 })
 
 
 /**
  * @summary Get activity distribution (productive vs non-productive)
  */
+export const GetActivityBreakdownQueryParams = zod.object({
+  "dateRange": zod.enum(['today', 'week', 'month', 'thisMonth']).optional()
+})
+
 export const GetActivityBreakdownResponse = zod.object({
   "items": zod.array(zod.object({
   "name": zod.string(),

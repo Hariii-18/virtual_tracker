@@ -3,17 +3,18 @@ import { useLocation } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useUpdateProfile } from "@workspace/api-client-react";
+import { useUpdateProfile, useSeedActivities } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2 } from "lucide-react";
 import { ProfileUpdateProfession } from "@workspace/api-client-react";
 
 const onboardingSchema = z.object({
   profession: z.nativeEnum(ProfileUpdateProfession).optional(),
+  customProfession: z.string().optional(),
   age: z.coerce.number().min(10).max(120).optional().or(z.literal("")),
   gender: z.string().optional(),
   height: z.coerce.number().min(50).max(300).optional().or(z.literal("")),
@@ -26,11 +27,13 @@ const onboardingSchema = z.object({
 export default function Onboarding() {
   const [, setLocation] = useLocation();
   const updateProfileMutation = useUpdateProfile();
+  const seedActivitiesMutation = useSeedActivities();
 
   const form = useForm<z.infer<typeof onboardingSchema>>({
     resolver: zodResolver(onboardingSchema),
     defaultValues: {
       profession: undefined,
+      customProfession: "",
       age: "",
       gender: "",
       height: "",
@@ -41,6 +44,9 @@ export default function Onboarding() {
     },
   });
 
+  const selectedProfession = form.watch("profession");
+  const showCustomField = selectedProfession === ProfileUpdateProfession.Custom;
+
   const onSubmit = (values: z.infer<typeof onboardingSchema>) => {
     const cleanedData = {
       ...values,
@@ -49,12 +55,20 @@ export default function Onboarding() {
       weight: values.weight === "" ? null : Number(values.weight),
       sleepTarget: values.sleepTarget === "" ? null : Number(values.sleepTarget),
       wakeUpTime: values.wakeUpTime === "" ? null : values.wakeUpTime,
+      customProfession: values.customProfession || null,
     };
 
     updateProfileMutation.mutate({ data: cleanedData }, {
       onSuccess: () => {
-        setLocation("/dashboard");
-      }
+        if (values.profession && values.profession !== ProfileUpdateProfession.Custom) {
+          seedActivitiesMutation.mutate(
+            { data: { profession: values.profession } },
+            { onSettled: () => setLocation("/dashboard") }
+          );
+        } else {
+          setLocation("/dashboard");
+        }
+      },
     });
   };
 
@@ -64,18 +78,19 @@ export default function Onboarding() {
 
   return (
     <div className="min-h-screen flex flex-col justify-center items-center p-4 bg-background py-12 relative">
-      <div className="absolute inset-0 z-0 bg-[radial-gradient(ellipse_at_bottom_right,_var(--tw-gradient-stops))] from-primary/10 via-background to-background"></div>
+      <div className="absolute inset-0 z-0 bg-[radial-gradient(ellipse_at_bottom_right,_var(--tw-gradient-stops))] from-primary/10 via-background to-background" />
 
       <div className="z-10 w-full max-w-2xl">
         <Card className="border-border/50 bg-card/50 backdrop-blur-xl shadow-2xl">
           <CardHeader>
             <CardTitle className="text-2xl">Complete your profile</CardTitle>
-            <CardDescription>We use this data to provide personalized productivity insights and BMI calculations.</CardDescription>
+            <CardDescription>
+              We use this data to provide personalized productivity insights and auto-generate activities for your lifestyle.
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <FormField
                     control={form.control}
@@ -83,9 +98,9 @@ export default function Onboarding() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Profession</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <Select onValueChange={field.onChange} value={field.value ?? ""}>
                           <FormControl>
-                            <SelectTrigger data-testid="select-profession">
+                            <SelectTrigger>
                               <SelectValue placeholder="Select profession" />
                             </SelectTrigger>
                           </FormControl>
@@ -102,19 +117,51 @@ export default function Onboarding() {
                     )}
                   />
 
-                  <FormField
-                    control={form.control}
-                    name="age"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Age</FormLabel>
-                        <FormControl>
-                          <Input type="number" placeholder="e.g. 28" {...field} data-testid="input-age" />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  {showCustomField ? (
+                    <FormField
+                      control={form.control}
+                      name="customProfession"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Your Profession</FormLabel>
+                          <FormControl>
+                            <Input placeholder="e.g. Designer, Doctor..." {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  ) : (
+                    <FormField
+                      control={form.control}
+                      name="age"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Age</FormLabel>
+                          <FormControl>
+                            <Input type="number" placeholder="e.g. 28" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
+
+                  {showCustomField && (
+                    <FormField
+                      control={form.control}
+                      name="age"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Age</FormLabel>
+                          <FormControl>
+                            <Input type="number" placeholder="e.g. 28" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
 
                   <FormField
                     control={form.control}
@@ -123,7 +170,7 @@ export default function Onboarding() {
                       <FormItem>
                         <FormLabel>Height (cm)</FormLabel>
                         <FormControl>
-                          <Input type="number" placeholder="e.g. 175" {...field} data-testid="input-height" />
+                          <Input type="number" placeholder="e.g. 175" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -137,7 +184,7 @@ export default function Onboarding() {
                       <FormItem>
                         <FormLabel>Weight (kg)</FormLabel>
                         <FormControl>
-                          <Input type="number" placeholder="e.g. 70" {...field} data-testid="input-weight" />
+                          <Input type="number" placeholder="e.g. 70" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -151,7 +198,7 @@ export default function Onboarding() {
                       <FormItem>
                         <FormLabel>Wake Up Time (HH:MM)</FormLabel>
                         <FormControl>
-                          <Input placeholder="07:00" {...field} data-testid="input-wake" />
+                          <Input placeholder="07:00" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -165,7 +212,7 @@ export default function Onboarding() {
                       <FormItem>
                         <FormLabel>Sleep Target (hours)</FormLabel>
                         <FormControl>
-                          <Input type="number" placeholder="8" {...field} data-testid="input-sleep" />
+                          <Input type="number" placeholder="8" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -180,19 +227,27 @@ export default function Onboarding() {
                     <FormItem>
                       <FormLabel>Primary Goals</FormLabel>
                       <FormControl>
-                        <Input placeholder="What do you want to achieve?" {...field} data-testid="input-goals" />
+                        <Input placeholder="What do you want to achieve?" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
 
+                {selectedProfession && selectedProfession !== ProfileUpdateProfession.Custom && (
+                  <p className="text-sm text-muted-foreground bg-primary/5 border border-primary/20 rounded-lg px-4 py-3">
+                    Activities for <strong>{selectedProfession}</strong> will be auto-generated for you after saving.
+                  </p>
+                )}
+
                 <div className="flex items-center justify-between pt-6 border-t border-border/50">
-                  <Button type="button" variant="ghost" onClick={handleSkip} data-testid="btn-skip">
+                  <Button type="button" variant="ghost" onClick={handleSkip}>
                     Skip for now
                   </Button>
-                  <Button type="submit" disabled={updateProfileMutation.isPending} data-testid="btn-submit">
-                    {updateProfileMutation.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+                  <Button type="submit" disabled={updateProfileMutation.isPending || seedActivitiesMutation.isPending}>
+                    {(updateProfileMutation.isPending || seedActivitiesMutation.isPending) ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    ) : null}
                     Save Profile
                   </Button>
                 </div>

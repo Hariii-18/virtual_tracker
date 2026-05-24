@@ -63,6 +63,8 @@ export interface Profile {
   /** @nullable */
   profession?: ProfileProfession;
   /** @nullable */
+  customProfession?: string | null;
+  /** @nullable */
   height?: number | null;
   /** @nullable */
   weight?: number | null;
@@ -96,6 +98,8 @@ export interface ProfileUpdate {
   gender?: string | null;
   /** @nullable */
   profession?: ProfileUpdateProfession;
+  /** @nullable */
+  customProfession?: string | null;
   /** @nullable */
   height?: number | null;
   /** @nullable */
@@ -208,6 +212,15 @@ export interface MonthlyAnalytics {
   weeks: WeekStats[];
   monthlyAvgScore?: number;
   consistencyPct?: number;
+  avgProductiveHours?: number;
+  /** @nullable */
+  mostActiveCategory?: string | null;
+  improvementPct?: number;
+  totalActiveDays?: number;
+}
+
+export interface SeedActivitiesInput {
+  profession: string;
 }
 
 export interface ActivityBreakdownItem {
@@ -256,6 +269,20 @@ export interface HistoryEntry {
   productiveHours: number;
   entries?: LogEntry[];
 }
+
+export type GetActivityBreakdownParams = {
+dateRange?: GetActivityBreakdownDateRange;
+};
+
+export type GetActivityBreakdownDateRange = typeof GetActivityBreakdownDateRange[keyof typeof GetActivityBreakdownDateRange];
+
+
+export const GetActivityBreakdownDateRange = {
+  today: 'today',
+  week: 'week',
+  month: 'month',
+  thisMonth: 'thisMonth',
+} as const;
 
 export type GetHistoryParams = {
 startDate?: string;

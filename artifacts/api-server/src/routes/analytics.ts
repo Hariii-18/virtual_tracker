@@ -15,8 +15,8 @@ function addDays(date: Date, days: number): Date {
   return d;
 }
 
-function dayLabel(dateStr: string): string {
-  const date = new Date(dateStr + "T12:00:00Z");
+function dayLabel(ds: string): string {
+  const date = new Date(ds + "T12:00:00Z");
   return date.toLocaleDateString("en-US", { weekday: "short", timeZone: "UTC" });
 }
 
@@ -27,6 +27,7 @@ async function getLogsWithActivities(userId: number, startDate: string, endDate:
       userId: logsTable.userId,
       activityId: logsTable.activityId,
       activityName: activitiesTable.name,
+      activityCategory: activitiesTable.category,
       date: logsTable.date,
       completed: logsTable.completed,
       hoursSpent: logsTable.hoursSpent,
@@ -53,12 +54,11 @@ function calcDayScore(entries: Array<{ completed: boolean; isProductive: boolean
 
 function calcStreak(dailyData: Map<string, number>): { current: number; longest: number } {
   const today = dateStr(new Date());
-  let current = 0;
   let longest = 0;
   let temp = 0;
+  let current = 0;
 
   const allDates = Array.from(dailyData.keys()).sort();
-
   for (const date of allDates) {
     if ((dailyData.get(date) ?? 0) > 30) {
       temp++;
@@ -99,7 +99,6 @@ router.get("/analytics/dashboard", requireAuth, async (req, res): Promise<void> 
     .reduce((sum, e) => sum + (e.hoursSpent ?? 0), 0);
   const totalHoursToday = todayEntries.reduce((sum, e) => sum + (e.hoursSpent ?? 0), 0);
 
-  // Last 30 days for streak
   const thirtyDaysAgo = dateStr(addDays(new Date(), -30));
   const recentEntries = await getLogsWithActivities(userId, thirtyDaysAgo, today);
 
@@ -115,24 +114,18 @@ router.get("/analytics/dashboard", requireAuth, async (req, res): Promise<void> 
 
   const { current, longest } = calcStreak(dailyScores);
 
-  // Weekly improvement
   const lastWeekStart = dateStr(addDays(new Date(), -14));
   const lastWeekEnd = dateStr(addDays(new Date(), -7));
   const thisWeekStart = dateStr(addDays(new Date(), -7));
   const thisWeekEntries = recentEntries.filter(e => e.date >= thisWeekStart && e.date <= today);
   const lastWeekEntries = recentEntries.filter(e => e.date >= lastWeekStart && e.date <= lastWeekEnd);
 
-  const thisWeekAvg = thisWeekEntries.length > 0
-    ? calcDayScore(thisWeekEntries)
-    : 0;
-  const lastWeekAvg = lastWeekEntries.length > 0
-    ? calcDayScore(lastWeekEntries)
-    : 0;
+  const thisWeekAvg = thisWeekEntries.length > 0 ? calcDayScore(thisWeekEntries) : 0;
+  const lastWeekAvg = lastWeekEntries.length > 0 ? calcDayScore(lastWeekEntries) : 0;
   const weeklyImprovement = lastWeekAvg > 0
     ? Math.round(((thisWeekAvg - lastWeekAvg) / lastWeekAvg) * 100)
     : 0;
 
-  // BMI
   let bmi: number | null = null;
   let bmiCategory: string | null = null;
   if (profile?.height && profile?.weight) {
@@ -144,7 +137,6 @@ router.get("/analytics/dashboard", requireAuth, async (req, res): Promise<void> 
     else bmiCategory = "Obese";
   }
 
-  // Badges
   const badges: string[] = [];
   if (current >= 7) badges.push("Week Warrior");
   if (current >= 30) badges.push("Month Master");
@@ -228,11 +220,7 @@ router.get("/analytics/monthly", requireAuth, async (req, res): Promise<void> =>
     const avgScore = dayScores.length > 0 ? Math.round(dayScores.reduce((s, n) => s + n, 0) / dayScores.length) : 0;
     const activeDays = dayScores.filter(s => s > 30).length;
 
-    weeks.push({
-      weekLabel: `Week ${4 - w}`,
-      avgScore,
-      activeDays,
-    });
+    weeks.push({ weekLabel: `Week ${4 - w}`, avgScore, activeDays });
   }
 
   const monthlyAvgScore = weeks.length > 0 ? Math.round(weeks.reduce((s, w) => s + w.avgScore, 0) / weeks.length) : 0;
@@ -240,15 +228,57 @@ router.get("/analytics/monthly", requireAuth, async (req, res): Promise<void> =>
   const activeDaysTotal = weeks.reduce((s, w) => s + w.activeDays, 0);
   const consistencyPct = Math.round((activeDaysTotal / totalDays) * 100);
 
-  res.json({ weeks, monthlyAvgScore, consistencyPct });
+  // Average productive hours
+  const completedEntries = entries.filter(e => e.completed && e.isProductive);
+  const totalProductiveHours = completedEntries.reduce((s, e) => s + (e.hoursSpent ?? 0), 0);
+  const avgProductiveHours = activeDaysTotal > 0 ? Math.round((totalProductiveHours / activeDaysTotal) * 10) / 10 : 0;
+
+  // Most active category
+  const categoryHours = new Map<string, number>();
+  for (const e of entries.filter(ee => ee.completed)) {
+    const cat = e.activityCategory ?? "Other";
+    categoryHours.set(cat, (categoryHours.get(cat) ?? 0) + (e.hoursSpent ?? 0));
+  }
+  let mostActiveCategory: string | null = null;
+  let maxHours = 0;
+  for (const [cat, hours] of categoryHours) {
+    if (hours > maxHours) { maxHours = hours; mostActiveCategory = cat; }
+  }
+
+  // Improvement: compare week 4 vs week 1 avg score
+  const week1 = weeks[0]?.avgScore ?? 0;
+  const week4 = weeks[3]?.avgScore ?? 0;
+  const improvementPct = week1 > 0 ? Math.round(((week4 - week1) / week1) * 100) : 0;
+
+  res.json({
+    weeks,
+    monthlyAvgScore,
+    consistencyPct,
+    avgProductiveHours,
+    mostActiveCategory,
+    improvementPct,
+    totalActiveDays: activeDaysTotal,
+  });
 });
 
 router.get("/analytics/activity-breakdown", requireAuth, async (req, res): Promise<void> => {
   const userId = req.userId!;
   const today = dateStr(new Date());
-  const thirtyDaysAgo = dateStr(addDays(new Date(), -29));
 
-  const entries = await getLogsWithActivities(userId, thirtyDaysAgo, today);
+  const dateRange = (req.query.dateRange as string) ?? "month";
+  let startDate: string;
+  if (dateRange === "today") {
+    startDate = today;
+  } else if (dateRange === "week") {
+    startDate = dateStr(addDays(new Date(), -6));
+  } else if (dateRange === "thisMonth") {
+    const now = new Date();
+    startDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-01`;
+  } else {
+    startDate = dateStr(addDays(new Date(), -29));
+  }
+
+  const entries = await getLogsWithActivities(userId, startDate, today);
 
   const activityMap = new Map<string, { hours: number; isProductive: boolean; color: string }>();
   for (const e of entries) {

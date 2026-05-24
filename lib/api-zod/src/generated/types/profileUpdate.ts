@@ -16,6 +16,8 @@ export interface ProfileUpdate {
   /** @nullable */
   profession?: ProfileUpdateProfession;
   /** @nullable */
+  customProfession?: string | null;
+  /** @nullable */
   height?: number | null;
   /** @nullable */
   weight?: number | null;

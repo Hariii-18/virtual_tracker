@@ -11,4 +11,9 @@ export interface MonthlyAnalytics {
   weeks: WeekStats[];
   monthlyAvgScore?: number;
   consistencyPct?: number;
+  avgProductiveHours?: number;
+  /** @nullable */
+  mostActiveCategory?: string | null;
+  improvementPct?: number;
+  totalActiveDays?: number;
 }

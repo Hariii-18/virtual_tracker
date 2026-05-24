@@ -4,27 +4,30 @@ import { getToken } from "@/lib/auth";
 import { useGetMe, getGetMeQueryKey } from "@workspace/api-client-react";
 import { Layout } from "@/components/layout";
 import { Loader2 } from "lucide-react";
+import { useGuest } from "@/contexts/guest-context";
 
 export function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
-  const [location, setLocation] = useLocation();
+  const [, setLocation] = useLocation();
+  const { isGuest } = useGuest();
   const token = getToken();
+
   const { data: user, isLoading, isError } = useGetMe({
     query: {
       queryKey: getGetMeQueryKey(),
-      enabled: !!token,
+      enabled: !isGuest && !!token,
       retry: false,
-    }
+    },
   });
 
   useEffect(() => {
-    if (!token || isError) {
+    if (!isGuest && (!token || isError)) {
       setLocation("/login");
     }
-  }, [token, isError, setLocation]);
+  }, [isGuest, token, isError, setLocation]);
 
-  if (!token || isError) return null;
+  if (!isGuest && (!token || isError)) return null;
 
-  if (isLoading || !user) {
+  if (!isGuest && (isLoading || (!user && !!token))) {
     return (
       <Layout>
         <div className="flex h-[calc(100vh-4rem)] items-center justify-center">

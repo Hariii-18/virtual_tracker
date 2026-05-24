@@ -1,0 +1,280 @@
+You are modifying an existing AI-generated productivity tracking platform called "ProdIntel". Do NOT redesign the application completely. Preserve the current UI style, layout structure, theme colors, sidebar style, analytics cards, typography, spacing, and overall visual identity. The current output/design is very good and should remain visually consistent.
+
+Carefully implement the following functional and responsive improvements without breaking existing features.
+
+---
+
+## AUTHENTICATION / GUEST MODE
+
+1. Before login/signup, allow users to use the application as a "Guest User".
+
+2. On the login/signup page:
+
+   * Add a "Continue as Guest" button.
+   * Guest users should be able to:
+
+     * access dashboard
+     * profile page
+     * analytics
+     * activities
+     * insights
+     * history
+   * Guest mode should use temporary local/session storage.
+   * If guest later creates an account, optionally migrate guest data to account.
+
+3. Preserve existing authentication system.
+
+---
+
+## PROFILE SECTION IMPROVEMENTS
+
+4. Currently profession selection does not persist after refresh.
+   Fix this issue permanently.
+
+5. Profession value must persist correctly:
+
+   * database
+   * API
+   * frontend state
+   * refresh/reload
+   * login/logout
+
+6. In profession dropdown:
+   Current options:
+
+   * Student
+   * Employee
+   * Freelancer
+   * Athlete
+   * Other
+
+7. Replace "Other" behavior:
+
+   * When user selects "Other":
+
+     * show a custom profession input field
+     * allow user to type profession manually
+   * Save this custom profession persistently.
+
+---
+
+## PREDEFINED ACTIVITIES SYSTEM
+
+8. In "Manage Activities" section:
+
+   * Keep the existing "Add Activity" button.
+   * Do NOT remove manual add functionality.
+
+9. Automatically generate predefined activities based on selected profession.
+
+10. Example mappings:
+
+Student:
+
+* School
+* College
+* Study
+* Coding
+* Gym
+* Sleep
+* Sports
+* Reading
+
+Employee:
+
+* Office Work
+* Meetings
+* Gym
+* Sleep
+* Family Time
+* Learning
+* Commute
+
+Freelancer:
+
+* Client Work
+* Coding
+* Marketing
+* Networking
+* Gym
+* Sleep
+* Learning
+
+Athlete:
+
+* Training
+* Gym
+* Cardio
+* Recovery
+* Sleep
+* Nutrition
+* Practice
+
+11. If user chooses custom profession:
+
+* do NOT auto-generate activities
+* allow user to create activities manually.
+
+12. User must still be able to:
+
+* delete predefined activities
+* edit predefined activities
+* add custom activities
+* rename activities
+
+13. Preserve current activity management UX.
+
+---
+
+## ACTIVITY TIME VALIDATION
+
+14. Add strict daily validation:
+
+* Total activity hours per day must NOT exceed 24 hours.
+* Show validation warning if exceeded.
+* Prevent save if total > 24.
+
+15. Add friendly UI message like:
+    "Total daily activity time cannot exceed 24 hours."
+
+---
+
+## ANALYTICS IMPROVEMENTS
+
+16. In Time Distribution pie chart:
+
+* currently all activities use same blue color
+* assign unique colors dynamically for each activity
+* colors should remain aesthetically consistent with current theme.
+
+17. Add legend colors matching pie slices.
+
+18. Add top-right dropdown/filter inside Time Distribution section:
+    Options:
+
+* Today
+* Last 7 Days
+* Last 30 Days
+* This Month
+
+19. Pie chart data should update dynamically based on selected range.
+
+---
+
+## MONTHLY RECAP SECTION
+
+20. Add a NEW analytics section below Time Distribution.
+
+21. Section title:
+    "Monthly Productivity Recap"
+
+22. This section should visually match existing analytics cards/charts.
+
+23. Show:
+
+* productivity trends
+* consistency score
+* average productive hours
+* most active category
+* improvement/decline percentage
+* weekly breakdown
+
+24. Use visually attractive charts/cards.
+
+25. Preserve current design language.
+
+---
+
+## MOBILE RESPONSIVENESS
+
+26. Current mobile responsiveness is broken.
+    Fix ALL responsive layout issues.
+
+27. Problems currently:
+
+* sidebar overlaps content
+* profile form becomes squeezed
+* dashboard cards overflow
+* analytics not responsive
+* layout scaling issues
+
+28. Implement proper mobile responsive behavior.
+
+29. For small screens:
+
+* replace fixed sidebar with collapsible hamburger menu.
+* sidebar should slide in/out.
+* overlay background on open.
+* auto-close after navigation selection.
+
+30. Ensure:
+
+* charts resize properly
+* forms stack vertically
+* cards become responsive
+* typography scales properly
+* no horizontal scrolling
+* buttons remain accessible
+
+31. Test responsiveness for:
+
+* mobile
+* tablet
+* desktop
+
+---
+
+## DATA PERSISTENCE
+
+32. Ensure all profile/activity/analytics data persists correctly after:
+
+* refresh
+* logout/login
+* route changes
+
+33. Fix any broken state synchronization issues.
+
+---
+
+## IMPORTANT IMPLEMENTATION RULES
+
+34. Do NOT break existing routing.
+
+35. Do NOT remove existing features.
+
+36. Do NOT redesign entire UI.
+
+37. Maintain existing purple/white visual style.
+
+38. Preserve current clean modern appearance.
+
+39. Fix issues incrementally and safely.
+
+40. Run full typecheck and ensure zero TypeScript errors.
+
+41. Ensure analytics calculations remain accurate.
+
+42. Maintain smooth transitions/animations.
+
+43. Verify guest mode and authenticated mode both work properly.
+
+44. Ensure generated code remains modular and maintainable.
+
+45. After implementation:
+
+* test desktop
+* test mobile
+* test profile persistence
+* test activity persistence
+* test analytics calculations
+* test guest mode
+* test profession-based activity generation
+
+Finally provide a summary of:
+
+* files modified
+* architecture changes
+* persistence fixes
+* responsive improvements
+* analytics improvements
+* guest mode implementation

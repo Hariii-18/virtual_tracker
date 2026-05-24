@@ -290,11 +290,38 @@ paths:
               schema:
                 $ref: "#/components/schemas/MonthlyAnalytics"
 
+  /activities/seed:
+    post:
+      operationId: seedActivities
+      tags: [activities]
+      summary: Seed predefined activities based on profession
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SeedActivitiesInput"
+      responses:
+        "201":
+          description: Seeded activities
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Activity"
+
   /analytics/activity-breakdown:
     get:
       operationId: getActivityBreakdown
       tags: [analytics]
       summary: Get activity distribution (productive vs non-productive)
+      parameters:
+        - name: dateRange
+          in: query
+          schema:
+            type: string
+            enum: [today, week, month, thisMonth]
       responses:
         "200":
           description: Activity breakdown
@@ -426,6 +453,8 @@ components:
         profession:
           type: ["string", "null"]
           enum: [Student, Employee, Athlete, Freelancer, Custom, null]
+        customProfession:
+          type: ["string", "null"]
         height:
           type: ["number", "null"]
         weight:
@@ -449,6 +478,8 @@ components:
         profession:
           type: ["string", "null"]
           enum: [Student, Employee, Athlete, Freelancer, Custom, null]
+        customProfession:
+          type: ["string", "null"]
         height:
           type: ["number", "null"]
         weight:
@@ -619,6 +650,14 @@ components:
           type: number
         consistencyPct:
           type: number
+        avgProductiveHours:
+          type: number
+        mostActiveCategory:
+          type: ["string", "null"]
+        improvementPct:
+          type: number
+        totalActiveDays:
+          type: integer
 
     WeekStats:
       type: object
@@ -630,6 +669,13 @@ components:
           type: number
         activeDays:
           type: integer
+
+    SeedActivitiesInput:
+      type: object
+      required: [profession]
+      properties:
+        profession:
+          type: string
 
     ActivityBreakdown:
       type: object

@@ -9,7 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Activity, Loader2 } from "lucide-react";
+import { Activity, Loader2, UserRound } from "lucide-react";
+import { useGuest } from "@/contexts/guest-context";
 
 const registerSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
@@ -21,6 +22,7 @@ export default function Register() {
   const [, setLocation] = useLocation();
   const [error, setError] = useState("");
   const registerMutation = useRegister();
+  const { enterGuestMode } = useGuest();
 
   const form = useForm<z.infer<typeof registerSchema>>({
     resolver: zodResolver(registerSchema),
@@ -36,14 +38,19 @@ export default function Register() {
       },
       onError: (err: any) => {
         setError(err.message || "Failed to register. Please try again.");
-      }
+      },
     });
+  };
+
+  const handleGuestMode = () => {
+    enterGuestMode();
+    setLocation("/dashboard");
   };
 
   return (
     <div className="min-h-screen flex flex-col justify-center items-center p-4 bg-background relative overflow-hidden">
-      <div className="absolute inset-0 z-0 bg-[radial-gradient(ellipse_at_top_left,_var(--tw-gradient-stops))] from-primary/20 via-background to-background"></div>
-      
+      <div className="absolute inset-0 z-0 bg-[radial-gradient(ellipse_at_top_left,_var(--tw-gradient-stops))] from-primary/20 via-background to-background" />
+
       <div className="z-10 w-full max-w-md">
         <div className="flex flex-col items-center mb-8">
           <div className="bg-primary/10 p-3 rounded-2xl mb-4">
@@ -68,7 +75,7 @@ export default function Register() {
                     <FormItem>
                       <FormLabel>Full Name</FormLabel>
                       <FormControl>
-                        <Input placeholder="John Doe" {...field} data-testid="input-name" />
+                        <Input placeholder="John Doe" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -81,7 +88,7 @@ export default function Register() {
                     <FormItem>
                       <FormLabel>Email</FormLabel>
                       <FormControl>
-                        <Input placeholder="you@example.com" {...field} data-testid="input-email" />
+                        <Input placeholder="you@example.com" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -94,25 +101,44 @@ export default function Register() {
                     <FormItem>
                       <FormLabel>Password</FormLabel>
                       <FormControl>
-                        <Input type="password" placeholder="••••••••" {...field} data-testid="input-password" />
+                        <Input type="password" placeholder="••••••••" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-                
+
                 {error && <div className="text-sm text-destructive font-medium">{error}</div>}
 
-                <Button type="submit" className="w-full mt-6" disabled={registerMutation.isPending} data-testid="button-register">
+                <Button type="submit" className="w-full mt-2" disabled={registerMutation.isPending}>
                   {registerMutation.isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
                   Sign Up
                 </Button>
               </form>
             </Form>
 
+            <div className="relative my-4">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t border-border" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-card px-2 text-muted-foreground">or</span>
+              </div>
+            </div>
+
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full"
+              onClick={handleGuestMode}
+            >
+              <UserRound className="w-4 h-4 mr-2" />
+              Continue as Guest
+            </Button>
+
             <div className="mt-6 text-center text-sm text-muted-foreground">
               Already have an account?{" "}
-              <Link href="/login" className="text-primary hover:underline font-medium" data-testid="link-login">
+              <Link href="/login" className="text-primary hover:underline font-medium">
                 Sign in
               </Link>
             </div>
