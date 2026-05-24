@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { useLocation } from "wouter";
 import { getToken } from "@/lib/auth";
-import { useGetMe } from "@workspace/api-client-react";
+import { useGetMe, getGetMeQueryKey } from "@workspace/api-client-react";
 import { Layout } from "@/components/layout";
 import { Loader2 } from "lucide-react";
 
@@ -10,8 +10,9 @@ export function ProtectedRoute({ component: Component }: { component: React.Comp
   const token = getToken();
   const { data: user, isLoading, isError } = useGetMe({
     query: {
+      queryKey: getGetMeQueryKey(),
       enabled: !!token,
-      retry: false
+      retry: false,
     }
   });
 

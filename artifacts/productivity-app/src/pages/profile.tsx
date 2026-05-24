@@ -48,7 +48,7 @@ export default function Profile() {
     if (profile) {
       form.reset({
         name: profile.name || "",
-        profession: profile.profession as ProfileUpdateProfession | undefined,
+        profession: (profile.profession ?? undefined) as Exclude<ProfileUpdateProfession, null> | undefined,
         age: profile.age || "",
         gender: profile.gender || "",
         height: profile.height || "",
