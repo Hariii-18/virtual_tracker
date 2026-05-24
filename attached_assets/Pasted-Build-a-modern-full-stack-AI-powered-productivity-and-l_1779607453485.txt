@@ -1,0 +1,216 @@
+Build a modern full-stack AI-powered productivity and lifestyle analytics web application using React.js, Node.js, Express.js, and MongoDB.
+
+PROJECT IDEA:
+This is NOT a simple todo app or habit tracker. It is a smart productivity intelligence platform where users track daily activities, analyze productivity trends, view analytics dashboards, and receive intelligent self-improvement suggestions based on behavioral patterns and consistency.
+
+TECH STACK:
+Frontend:
+- React.js
+- Tailwind CSS
+- React Router
+- Axios
+- Recharts
+
+Backend:
+- Node.js
+- Express.js
+- JWT Authentication
+- bcrypt password hashing
+
+Database:
+- MongoDB + Mongoose
+
+DEPLOYMENT:
+- Frontend: Vercel
+- Backend: Render
+- Database: MongoDB Atlas
+
+MAIN FEATURES:
+
+1. AUTHENTICATION SYSTEM
+- Email/password signup and login
+- JWT authentication
+- Password hashing
+- Forgot password with email reset link
+- Optional GitHub OAuth login
+- Optional mobile OTP login
+- Persistent user sessions
+
+2. USER PROFILE SYSTEM
+Store:
+- Name
+- Email
+- Age
+- Gender
+- Profession
+- Height
+- Weight
+- Goals
+- Wake-up time
+- Sleep target
+
+3. DYNAMIC PROFESSION SYSTEM
+The app should dynamically show activities based on selected profession.
+
+Profession categories:
+- Student
+- Employee
+- Athlete
+- Freelancer
+- Custom
+
+Example Student Activities:
+- College
+- Studying
+- Coding
+- Gym
+- Sports
+- Sleep
+- Reading
+
+Example Employee Activities:
+- Office
+- Meetings
+- Gym
+- Learning
+- Sleep
+- Side Hustle
+
+Users should also:
+- Add custom activities
+- Edit activities
+- Delete activities
+
+4. DAILY TRACKING SYSTEM
+Users should track:
+- Daily activity completion
+- Hours spent
+- Productivity percentage
+- Notes/comments
+
+Daily logs should automatically reset at 12 AM while preserving previous records.
+
+5. PRODUCTIVITY ANALYTICS
+Calculate and display:
+- Daily productivity score
+- Weekly productivity trend
+- Monthly consistency
+- Completion percentage
+- Streak tracking
+- Weekly improvement percentage
+
+6. DASHBOARD & ANALYTICS
+Create a modern dashboard with:
+- Sidebar navigation
+- Pie charts
+- Bar graphs
+- Trend graphs
+- Productivity cards
+- Weekly summary
+- Streak trackers
+- Activity breakdowns
+
+Dashboard should display:
+- Productive vs non-productive time
+- Activity distribution
+- Weekly trends
+- Monthly trends
+- Productivity score
+- Daily productivity percentage
+
+7. AI-LIKE RECOMMENDATION ENGINE
+The application should analyze user behavior and provide intelligent recommendations using rule-based analytics.
+
+Examples:
+- If gym consistency is low → suggest fitness improvements
+- If study hours are low → suggest increasing focus time
+- If sleep is low → suggest improving sleep schedule
+- Calculate BMI using height and weight
+- Suggest diet and health improvements
+
+Display:
+- Strength areas
+- Weakness areas
+- Personalized recommendations
+- Weekly improvement insights
+- Productivity analysis
+
+8. HISTORY SYSTEM
+Maintain at least 1 year of historical user data.
+
+Users should:
+- View previous logs by date
+- Filter by day/week/month
+- Analyze productivity history
+- View activity history and trends
+
+9. UI/UX REQUIREMENTS
+UI should be:
+- Modern
+- Responsive
+- Dashboard-based
+- Clean and professional
+- Mobile-friendly
+- Dark mode supported
+- Smooth animations
+- Attractive charts and cards
+
+Design inspiration:
+- Notion
+- Habitify
+- Fitbit Dashboard
+- GitHub contribution graphs
+
+10. PROJECT STRUCTURE
+Use scalable architecture with separate folders for:
+- frontend
+- backend
+- components
+- pages
+- routes
+- controllers
+- models
+- middleware
+- services
+- utilities
+
+11. DATABASE DESIGN
+Create optimized MongoDB schemas for:
+- Users
+- Daily Logs
+- Activities
+- Analytics
+- Recommendations
+
+12. DEVELOPMENT REQUIREMENTS
+- Use reusable React components
+- Use modular backend architecture
+- Use environment variables
+- Add proper error handling
+- Write scalable clean code
+- Use responsive layouts
+- Add loading states and validations
+
+13. EXTRA FEATURES
+- Dark mode toggle
+- Custom activity categories
+- Weekly insights
+- Productivity badges
+- Streak system
+- Goal tracking
+- Daily productivity percentage
+- Weekly productivity improvement tracker
+
+Generate:
+- Clean scalable folder structure
+- Modern responsive UI
+- Production-ready architecture
+- Reusable components
+- Secure backend APIs
+- MongoDB schemas
+- Authentication flow
+- Dashboard pages
+- Analytics components
+- Recommendation engine logic
+
+The application should feel like a professional startup-level productivity intelligence platform and not a basic student project.
