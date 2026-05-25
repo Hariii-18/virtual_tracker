@@ -1,13 +1,13 @@
 import { useState } from "react";
 import {
   useListActivities, useCreateActivity, useUpdateActivity, useDeleteActivity,
-  getListActivitiesQueryKey, useSeedActivities,
+  getListActivitiesQueryKey, useSeedActivities, useDeleteAllActivities,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Plus, Loader2, Edit, Trash2, CheckCircle, XCircle, Wand2, Cpu } from "lucide-react";
+import { Plus, Loader2, Edit, Trash2, CheckCircle, XCircle, Wand2, Cpu, Eraser } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -217,7 +217,7 @@ function ActivityFormDialog({
 }
 
 function GuestActivities() {
-  const { activities, addActivity, updateActivity, deleteActivity, seedProfessionActivities } = useGuest();
+  const { activities, addActivity, updateActivity, deleteActivity, seedProfessionActivities, deleteAllActivities } = useGuest();
   const { toast } = useToast();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editActivity, setEditActivity] = useState<GuestActivity | null>(null);
@@ -253,6 +253,11 @@ function GuestActivities() {
     });
   };
 
+  const handleDeleteAll = () => {
+    deleteAllActivities();
+    toast({ title: "All activities deleted", description: "Your activity list has been cleared." });
+  };
+
   return (
     <ActivitiesView
       activities={activities}
@@ -265,6 +270,7 @@ function GuestActivities() {
         deleteActivity(id);
         toast({ title: "Activity deleted" });
       }}
+      onDeleteAll={handleDeleteAll}
       isPending={false}
       seedProfession={seedProfession}
       setSeedProfession={setSeedProfession}
@@ -279,6 +285,7 @@ function AuthActivities() {
   const createMutation = useCreateActivity();
   const updateMutation = useUpdateActivity();
   const deleteMutation = useDeleteActivity();
+  const deleteAllMutation = useDeleteAllActivities();
   const seedMutation = useSeedActivities();
   const queryClient = useQueryClient();
   const { toast } = useToast();
@@ -362,6 +369,14 @@ function AuthActivities() {
           { onSuccess: () => { invalidate(); toast({ title: "Activity deleted" }); } }
         )
       }
+      onDeleteAll={() =>
+        deleteAllMutation.mutate(undefined, {
+          onSuccess: () => {
+            invalidate();
+            toast({ title: "All activities deleted", description: "Your activity list has been cleared." });
+          },
+        })
+      }
       isPending={createMutation.isPending || updateMutation.isPending}
       seedProfession={seedProfession}
       setSeedProfession={setSeedProfession}
@@ -379,6 +394,7 @@ function ActivitiesView({
   setEditActivity,
   onSubmit,
   onDelete,
+  onDeleteAll,
   isPending,
   seedProfession,
   setSeedProfession,
@@ -392,6 +408,7 @@ function ActivitiesView({
   setEditActivity: (a: AnyActivity | null) => void;
   onSubmit: (values: z.infer<typeof activitySchema>, id?: number) => void;
   onDelete: (id: number) => void;
+  onDeleteAll: () => void;
   isPending: boolean;
   seedProfession: string;
   setSeedProfession: (v: string) => void;
@@ -408,15 +425,44 @@ function ActivitiesView({
           <h2 className="text-2xl font-bold tracking-tight">Manage Activities</h2>
           <p className="text-muted-foreground">Create and track your daily activities.</p>
         </div>
-        <Button
-          onClick={() => {
-            setEditActivity(null);
-            setDialogOpen(true);
-          }}
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          Add Activity
-        </Button>
+        <div className="flex items-center gap-2">
+          {activities.length > 0 && (
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive" size="sm" className="h-9">
+                  <Eraser className="w-4 h-4 mr-2" />
+                  Delete All
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Delete All Activities?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This will permanently delete all {activities.length} activities and cannot be undone. Your logs will be kept.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={onDeleteAll}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    Delete All
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
+          <Button
+            onClick={() => {
+              setEditActivity(null);
+              setDialogOpen(true);
+            }}
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Add Activity
+          </Button>
+        </div>
       </div>
 
       <Card className="bg-card">

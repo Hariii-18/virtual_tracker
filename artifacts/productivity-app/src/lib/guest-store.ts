@@ -216,6 +216,10 @@ export const guestStore = {
     return this.getLogs(today).reduce((sum, l) => sum + (l.hoursSpent ?? 0), 0);
   },
 
+  deleteAllActivities(): void {
+    localStorage.setItem(GUEST_ACTIVITIES_KEY, JSON.stringify([]));
+  },
+
   seedActivities(profession: string): GuestActivity[] {
     const templates = PROFESSION_TEMPLATES[profession] ?? [];
 

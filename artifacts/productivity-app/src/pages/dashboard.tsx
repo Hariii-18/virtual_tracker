@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   useGetDashboardSummary, useGetTodayLog, useListActivities,
   useUpsertLogEntry, getGetDashboardSummaryQueryKey, getGetTodayLogQueryKey,
@@ -9,15 +10,136 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
 import { useGuest } from "@/contexts/guest-context";
 import { Link } from "wouter";
+import { formatDuration, parseHoursMinutes } from "@/lib/format";
 
 const MAX_DAILY_HOURS = 24;
 
+interface ActivityDef {
+  id: number;
+  name: string;
+  isProductive: boolean;
+  targetHours?: number | null;
+}
+
+interface LogEntry {
+  activityId: number;
+  completed: boolean;
+  hoursSpent?: number | null;
+}
+
+function ActivityRow({
+  activity,
+  logEntry,
+  totalHoursToday,
+  onSetHoursError,
+  onToggle,
+  onSaveHours,
+}: {
+  activity: ActivityDef;
+  logEntry?: LogEntry;
+  totalHoursToday: number;
+  onSetHoursError: (e: string | null) => void;
+  onToggle: (activityId: number, currentlyCompleted: boolean, decimalHours?: number) => void;
+  onSaveHours: (activityId: number, isCompleted: boolean, decimalHours: number) => void;
+}) {
+  const [hInput, setHInput] = useState("");
+  const [mInput, setMInput] = useState("");
+
+  const isCompleted = logEntry?.completed ?? false;
+  const hoursSpent = logEntry?.hoursSpent ?? 0;
+  const hasInput = hInput !== "" || mInput !== "";
+  const displayTime = hoursSpent > 0 ? formatDuration(hoursSpent) : null;
+
+  const getDecimalHours = () => parseHoursMinutes(hInput, mInput);
+
+  const validateAndGetTotal = (decimalHours: number): boolean => {
+    const existing = logEntry?.hoursSpent ?? 0;
+    const newTotal = totalHoursToday - existing + decimalHours;
+    if (newTotal > MAX_DAILY_HOURS) {
+      onSetHoursError(`Total daily activity time cannot exceed ${MAX_DAILY_HOURS} hours.`);
+      return false;
+    }
+    return true;
+  };
+
+  const clearInputs = () => { setHInput(""); setMInput(""); };
+
+  const handleSave = () => {
+    const dec = getDecimalHours();
+    if (dec <= 0) return;
+    if (!validateAndGetTotal(dec)) return;
+    onSetHoursError(null);
+    onSaveHours(activity.id, isCompleted, dec);
+    clearInputs();
+  };
+
+  const handleToggle = () => {
+    if (hasInput) {
+      const dec = getDecimalHours();
+      if (dec > 0 && !validateAndGetTotal(dec)) return;
+      onSetHoursError(null);
+      onToggle(activity.id, isCompleted, dec > 0 ? dec : undefined);
+      clearInputs();
+    } else {
+      onSetHoursError(null);
+      onToggle(activity.id, isCompleted, undefined);
+    }
+  };
+
+  return (
+    <div className={`p-3 md:p-4 rounded-lg border transition-all ${isCompleted ? "bg-primary/5 border-primary/20" : "bg-card border-border"}`}>
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <div className="flex items-center space-x-3 min-w-0 flex-1">
+          <Checkbox checked={isCompleted} onCheckedChange={handleToggle} />
+          <label
+            className={`font-medium text-sm cursor-pointer truncate ${isCompleted ? "line-through opacity-70" : ""}`}
+            onClick={handleToggle}
+          >
+            {activity.name}
+          </label>
+          {activity.isProductive && (
+            <span className="hidden sm:inline text-[10px] uppercase tracking-wider bg-primary/20 text-primary px-2 py-0.5 rounded-full font-semibold flex-shrink-0">
+              Prod
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-1 flex-shrink-0">
+          {displayTime && !hasInput && (
+            <span className="text-xs text-muted-foreground mr-1 hidden sm:inline">{displayTime}</span>
+          )}
+          <Input
+            type="number"
+            min="0"
+            max="24"
+            placeholder="h"
+            className="w-11 h-8 text-sm text-center px-1"
+            value={hInput}
+            onChange={(e) => setHInput(e.target.value)}
+          />
+          <span className="text-muted-foreground text-xs font-medium">h</span>
+          <Input
+            type="number"
+            min="0"
+            max="59"
+            placeholder="m"
+            className="w-11 h-8 text-sm text-center px-1"
+            value={mInput}
+            onChange={(e) => setMInput(e.target.value)}
+          />
+          <span className="text-muted-foreground text-xs font-medium">m</span>
+          <Button size="sm" variant="secondary" className="h-8 px-2 text-xs ml-0.5" onClick={handleSave}>
+            Save
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function GuestDashboard() {
   const { activities, todayLogs, upsertLog } = useGuest();
-  const [hoursInputs, setHoursInputs] = useState<Record<number, string>>({});
   const [hoursError, setHoursError] = useState<string | null>(null);
 
   const completedToday = todayLogs.filter(l => l.completed).length;
@@ -28,30 +150,12 @@ function GuestDashboard() {
   const totalHoursToday = todayLogs.reduce((s, l) => s + (l.hoursSpent ?? 0), 0);
   const progressPct = totalToday > 0 ? (completedToday / totalToday) * 100 : 0;
 
-  const handleToggle = (activityId: number, currentlyCompleted: boolean) => {
-    const hours = hoursInputs[activityId] ? Number(hoursInputs[activityId]) : undefined;
-    if (hours !== undefined) {
-      const newTotal = totalHoursToday - (todayLogs.find(l => l.activityId === activityId)?.hoursSpent ?? 0) + hours;
-      if (newTotal > MAX_DAILY_HOURS) {
-        setHoursError(`Total daily activity time cannot exceed ${MAX_DAILY_HOURS} hours.`);
-        return;
-      }
-    }
-    setHoursError(null);
-    upsertLog(activityId, !currentlyCompleted, hours);
+  const handleToggle = (activityId: number, currentlyCompleted: boolean, decimalHours?: number) => {
+    upsertLog(activityId, !currentlyCompleted, decimalHours);
   };
 
-  const handleSaveHours = (activityId: number, isCompleted: boolean) => {
-    const hours = Number(hoursInputs[activityId]);
-    if (!hours) return;
-    const existing = todayLogs.find(l => l.activityId === activityId)?.hoursSpent ?? 0;
-    const newTotal = totalHoursToday - existing + hours;
-    if (newTotal > MAX_DAILY_HOURS) {
-      setHoursError(`Total daily activity time cannot exceed ${MAX_DAILY_HOURS} hours.`);
-      return;
-    }
-    setHoursError(null);
-    upsertLog(activityId, isCompleted, hours);
+  const handleSaveHours = (activityId: number, isCompleted: boolean, decimalHours: number) => {
+    upsertLog(activityId, isCompleted, decimalHours);
   };
 
   return (
@@ -67,11 +171,10 @@ function GuestDashboard() {
       bmi={null}
       bmiCategory={null}
       badges={[]}
-      activities={activities.map(a => ({ ...a, targetHours: a.targetHours }))}
+      activities={activities}
       todayLog={todayLogs}
-      hoursInputs={hoursInputs}
-      setHoursInputs={setHoursInputs}
       hoursError={hoursError}
+      onSetHoursError={setHoursError}
       onToggle={handleToggle}
       onSaveHours={handleSaveHours}
       progressPct={progressPct}
@@ -85,7 +188,6 @@ function AuthDashboard() {
   const { data: todayLog, isLoading: isLoadingLog } = useGetTodayLog();
   const upsertMutation = useUpsertLogEntry();
   const queryClient = useQueryClient();
-  const [hoursInputs, setHoursInputs] = useState<Record<number, string>>({});
   const [hoursError, setHoursError] = useState<string | null>(null);
 
   if (isLoadingSummary || isLoadingActivities || isLoadingLog) {
@@ -98,41 +200,23 @@ function AuthDashboard() {
 
   const totalHoursToday = (todayLog ?? []).reduce((s, l) => s + (l.hoursSpent ?? 0), 0);
 
-  const handleToggle = (activityId: number, currentlyCompleted: boolean) => {
-    const hours = hoursInputs[activityId] ? Number(hoursInputs[activityId]) : undefined;
-    if (hours !== undefined) {
-      const existing = (todayLog ?? []).find(l => l.activityId === activityId)?.hoursSpent ?? 0;
-      const newTotal = totalHoursToday - existing + hours;
-      if (newTotal > MAX_DAILY_HOURS) {
-        setHoursError(`Total daily activity time cannot exceed ${MAX_DAILY_HOURS} hours.`);
-        return;
-      }
-    }
-    setHoursError(null);
-    upsertMutation.mutate({ data: { activityId, completed: !currentlyCompleted, hoursSpent: hours } }, {
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: getGetTodayLogQueryKey() });
-        queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
-      },
-    });
+  const invalidate = () => {
+    queryClient.invalidateQueries({ queryKey: getGetTodayLogQueryKey() });
+    queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
   };
 
-  const handleSaveHours = (activityId: number, isCompleted: boolean) => {
-    const hours = Number(hoursInputs[activityId]);
-    if (!hours) return;
-    const existing = (todayLog ?? []).find(l => l.activityId === activityId)?.hoursSpent ?? 0;
-    const newTotal = totalHoursToday - existing + hours;
-    if (newTotal > MAX_DAILY_HOURS) {
-      setHoursError(`Total daily activity time cannot exceed ${MAX_DAILY_HOURS} hours.`);
-      return;
-    }
-    setHoursError(null);
-    upsertMutation.mutate({ data: { activityId, completed: isCompleted, hoursSpent: hours } }, {
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: getGetTodayLogQueryKey() });
-        queryClient.invalidateQueries({ queryKey: getGetDashboardSummaryQueryKey() });
-      },
-    });
+  const handleToggle = (activityId: number, currentlyCompleted: boolean, decimalHours?: number) => {
+    upsertMutation.mutate(
+      { data: { activityId, completed: !currentlyCompleted, hoursSpent: decimalHours } },
+      { onSuccess: invalidate }
+    );
+  };
+
+  const handleSaveHours = (activityId: number, isCompleted: boolean, decimalHours: number) => {
+    upsertMutation.mutate(
+      { data: { activityId, completed: isCompleted, hoursSpent: decimalHours } },
+      { onSuccess: invalidate }
+    );
   };
 
   const progressPct = summary && summary.totalToday > 0
@@ -153,9 +237,8 @@ function AuthDashboard() {
       badges={summary?.badges ?? []}
       activities={activities ?? []}
       todayLog={todayLog ?? []}
-      hoursInputs={hoursInputs}
-      setHoursInputs={setHoursInputs}
       hoursError={hoursError}
+      onSetHoursError={setHoursError}
       onToggle={handleToggle}
       onSaveHours={handleSaveHours}
       progressPct={progressPct}
@@ -175,21 +258,20 @@ interface DashboardViewProps {
   bmi: number | null;
   bmiCategory: string | null;
   badges: string[];
-  activities: Array<{ id: number; name: string; isProductive: boolean; targetHours?: number | null }>;
-  todayLog: Array<{ activityId: number; completed: boolean; hoursSpent?: number | null }>;
-  hoursInputs: Record<number, string>;
-  setHoursInputs: (v: Record<number, string>) => void;
+  activities: ActivityDef[];
+  todayLog: LogEntry[];
   hoursError: string | null;
-  onToggle: (activityId: number, currentlyCompleted: boolean) => void;
-  onSaveHours: (activityId: number, isCompleted: boolean) => void;
+  onSetHoursError: (e: string | null) => void;
+  onToggle: (activityId: number, currentlyCompleted: boolean, decimalHours?: number) => void;
+  onSaveHours: (activityId: number, isCompleted: boolean, decimalHours: number) => void;
   progressPct: number;
 }
 
 function DashboardView({
   todayScore, currentStreak, longestStreak, weeklyImprovement,
   completedToday, totalToday, productiveHoursToday, totalHoursToday,
-  bmi, bmiCategory, badges, activities, todayLog, hoursInputs, setHoursInputs,
-  hoursError, onToggle, onSaveHours, progressPct,
+  bmi, bmiCategory, badges, activities, todayLog, hoursError,
+  onSetHoursError, onToggle, onSaveHours, progressPct,
 }: DashboardViewProps) {
   return (
     <div className="space-y-6 max-w-6xl mx-auto">
@@ -253,51 +335,23 @@ function DashboardView({
         <Card className="lg:col-span-2">
           <CardHeader>
             <CardTitle>Daily Activities</CardTitle>
-            <CardDescription>Track what you've accomplished today</CardDescription>
+            <CardDescription>Track what you've accomplished today · enter hours + minutes then Save</CardDescription>
           </CardHeader>
           <CardContent>
             {activities.length > 0 ? (
               <div className="space-y-3">
                 {activities.map((activity) => {
                   const logEntry = todayLog.find(log => log.activityId === activity.id);
-                  const isCompleted = logEntry?.completed || false;
-                  const hoursSpent = logEntry?.hoursSpent || 0;
-
                   return (
-                    <div
+                    <ActivityRow
                       key={activity.id}
-                      className={`p-3 md:p-4 rounded-lg border transition-all ${isCompleted ? "bg-primary/5 border-primary/20" : "bg-card border-border"}`}
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <div className="flex items-center space-x-3 min-w-0">
-                          <Checkbox
-                            checked={isCompleted}
-                            onCheckedChange={() => onToggle(activity.id, isCompleted)}
-                          />
-                          <label className={`font-medium text-sm cursor-pointer truncate ${isCompleted ? "line-through opacity-70" : ""}`}>
-                            {activity.name}
-                          </label>
-                          {activity.isProductive && (
-                            <span className="hidden sm:inline text-[10px] uppercase tracking-wider bg-primary/20 text-primary px-2 py-0.5 rounded-full font-semibold flex-shrink-0">
-                              Prod
-                            </span>
-                          )}
-                        </div>
-                        <div className="flex items-center space-x-2 flex-shrink-0">
-                          <Input
-                            type="number"
-                            step="0.5"
-                            placeholder={hoursSpent ? String(hoursSpent) : "hrs"}
-                            className="w-14 h-8 text-sm"
-                            value={hoursInputs[activity.id] !== undefined ? hoursInputs[activity.id] : ""}
-                            onChange={(e) => setHoursInputs({ ...hoursInputs, [activity.id]: e.target.value })}
-                          />
-                          <Button size="sm" variant="secondary" className="h-8 px-2 text-xs" onClick={() => onSaveHours(activity.id, isCompleted)}>
-                            Save
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
+                      activity={activity}
+                      logEntry={logEntry}
+                      totalHoursToday={totalHoursToday}
+                      onSetHoursError={onSetHoursError}
+                      onToggle={onToggle}
+                      onSaveHours={onSaveHours}
+                    />
                   );
                 })}
               </div>
@@ -321,8 +375,8 @@ function DashboardView({
               <div className="space-y-4">
                 <div>
                   <div className="flex justify-between text-sm mb-1">
-                    <span>Productive Hours</span>
-                    <span className="font-bold">{productiveHoursToday}h</span>
+                    <span>Productive</span>
+                    <span className="font-bold">{formatDuration(productiveHoursToday)}</span>
                   </div>
                   <Progress
                     value={totalHoursToday ? (productiveHoursToday / totalHoursToday) * 100 : 0}
@@ -332,7 +386,7 @@ function DashboardView({
                 <div>
                   <div className="flex justify-between text-sm mb-1">
                     <span>Total Tracked</span>
-                    <span className="font-bold">{totalHoursToday}h / {MAX_DAILY_HOURS}h</span>
+                    <span className="font-bold">{formatDuration(totalHoursToday)} / {MAX_DAILY_HOURS}h</span>
                   </div>
                   <Progress value={(totalHoursToday / MAX_DAILY_HOURS) * 100} className="h-2 bg-secondary" />
                 </div>

@@ -147,6 +147,12 @@ router.patch("/activities/:id", requireAuth, async (req, res): Promise<void> => 
   res.json(activity);
 });
 
+router.delete("/activities", requireAuth, async (req, res): Promise<void> => {
+  const userId = req.userId!;
+  await db.delete(activitiesTable).where(eq(activitiesTable.userId, userId));
+  res.sendStatus(204);
+});
+
 router.delete("/activities/:id", requireAuth, async (req, res): Promise<void> => {
   const userId = req.userId!;
   const rawId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;

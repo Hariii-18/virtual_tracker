@@ -5,13 +5,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Loader2, TrendingUp, TrendingDown, Minus, Activity, Clock, Star } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  AreaChart, Area, PieChart, Pie, Cell,
+  AreaChart, Area, PieChart, Pie, Cell, Label,
 } from "recharts";
 import { useGuest } from "@/contexts/guest-context";
+import { formatDuration } from "@/lib/format";
 
 const CHART_COLORS = [
-  "#6366f1", "#8b5cf6", "#3b82f6", "#10b981", "#f59e0b",
-  "#ef4444", "#ec4899", "#14b8a6", "#f97316", "#84cc16",
+  "#6366f1", "#ef4444", "#10b981", "#f59e0b", "#8b5cf6",
+  "#3b82f6", "#ec4899", "#14b8a6", "#f97316", "#84cc16",
+  "#dc2626", "#7c3aed", "#059669", "#d97706", "#db2777",
 ];
 
 const DATE_RANGE_OPTIONS = [
@@ -20,6 +22,116 @@ const DATE_RANGE_OPTIONS = [
   { label: "Last 30 Days", value: "month" },
   { label: "This Month", value: "thisMonth" },
 ];
+
+interface PieItem {
+  name: string;
+  hours: number;
+  pct: number;
+  color: string;
+  category?: string;
+}
+
+const CustomPieTooltip = ({ active, payload }: { active?: boolean; payload?: Array<{ payload: PieItem }> }) => {
+  if (!active || !payload?.length) return null;
+  const { name, hours, pct, color, category } = payload[0].payload;
+  return (
+    <div style={{
+      backgroundColor: "hsl(var(--popover))",
+      border: "1px solid hsl(var(--border))",
+      borderRadius: "10px",
+      padding: "10px 14px",
+      boxShadow: "0 8px 24px rgba(0,0,0,0.15)",
+      minWidth: "160px",
+    }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "6px" }}>
+        <div style={{ width: "10px", height: "10px", borderRadius: "50%", backgroundColor: color, flexShrink: 0 }} />
+        <span style={{ fontWeight: 600, fontSize: "13px", color: "hsl(var(--foreground))" }}>{name}</span>
+      </div>
+      {category && (
+        <p style={{ fontSize: "11px", color: "hsl(var(--muted-foreground))", marginBottom: "4px" }}>{category}</p>
+      )}
+      <p style={{ fontSize: "14px", fontWeight: 700, color: "hsl(var(--primary))", marginBottom: "2px" }}>
+        {formatDuration(hours)}
+      </p>
+      <p style={{ fontSize: "12px", color: "hsl(var(--muted-foreground))" }}>
+        {pct}% of total time
+      </p>
+    </div>
+  );
+};
+
+const PieCenterLabel = ({ viewBox, total }: { viewBox?: { cx: number; cy: number }; total: number }) => {
+  const cx = viewBox?.cx ?? 0;
+  const cy = viewBox?.cy ?? 0;
+  return (
+    <g>
+      <text
+        x={cx}
+        y={cy - 8}
+        textAnchor="middle"
+        dominantBaseline="middle"
+        style={{ fontSize: "11px", fill: "hsl(var(--muted-foreground))", fontFamily: "inherit" }}
+      >
+        Total Time
+      </text>
+      <text
+        x={cx}
+        y={cy + 12}
+        textAnchor="middle"
+        dominantBaseline="middle"
+        style={{ fontSize: "18px", fontWeight: "bold", fill: "hsl(var(--foreground))", fontFamily: "inherit" }}
+      >
+        {formatDuration(total)}
+      </text>
+    </g>
+  );
+};
+
+function PieChartWithLegend({ items, height = 280 }: { items: PieItem[]; height?: number }) {
+  const total = items.reduce((s, i) => s + i.hours, 0);
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
+      <div style={{ height }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <PieChart>
+            <Pie
+              data={items}
+              cx="50%"
+              cy="50%"
+              innerRadius={75}
+              outerRadius={108}
+              paddingAngle={2}
+              dataKey="hours"
+              stroke="none"
+            >
+              {items.map((entry, index) => (
+                <Cell key={`cell-${index}`} fill={entry.color || CHART_COLORS[index % CHART_COLORS.length]} />
+              ))}
+              <Label content={(props) => <PieCenterLabel viewBox={props.viewBox as { cx: number; cy: number }} total={total} />} position="center" />
+            </Pie>
+            <Tooltip content={<CustomPieTooltip />} />
+          </PieChart>
+        </ResponsiveContainer>
+      </div>
+      <div className="space-y-2.5 max-h-[280px] overflow-y-auto pr-1">
+        {items.map((item, i) => (
+          <div key={i} className="flex items-center justify-between text-sm gap-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <div
+                className="w-3 h-3 rounded-full flex-shrink-0"
+                style={{ backgroundColor: item.color || CHART_COLORS[i % CHART_COLORS.length] }}
+              />
+              <span className="truncate">{item.name}</span>
+            </div>
+            <span className="text-muted-foreground flex-shrink-0 text-right">
+              {formatDuration(item.hours)} <span className="opacity-60">({item.pct}%)</span>
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 function GuestAnalytics() {
   const { allLogs, activities } = useGuest();
@@ -50,60 +162,41 @@ function GuestBreakdown({
   activities,
 }: {
   logs: Array<{ activityId: number; completed: boolean; hoursSpent: number | null }>;
-  activities: Array<{ id: number; name: string; isProductive: boolean; color: string | null }>;
+  activities: Array<{ id: number; name: string; isProductive: boolean; color: string | null; category: string }>;
 }) {
   const activityMap = new Map(activities.map(a => [a.id, a]));
-  const buckets = new Map<string, { hours: number; isProductive: boolean; color: string }>();
+  const buckets = new Map<string, { hours: number; isProductive: boolean; color: string; category: string }>();
 
   for (const log of logs) {
     if (!log.completed) continue;
     const act = activityMap.get(log.activityId);
     if (!act) continue;
     if (!buckets.has(act.name)) {
-      buckets.set(act.name, { hours: 0, isProductive: act.isProductive, color: act.color ?? "#6366f1" });
+      buckets.set(act.name, { hours: 0, isProductive: act.isProductive, color: act.color ?? "#6366f1", category: act.category });
     }
     buckets.get(act.name)!.hours += log.hoursSpent ?? 0;
   }
 
-  const items = Array.from(buckets.entries()).map(([name, d]) => ({
+  const total = Array.from(buckets.values()).reduce((s, d) => s + d.hours, 0);
+  const items: PieItem[] = Array.from(buckets.entries()).map(([name, d]) => ({
     name,
-    hours: Math.round(d.hours * 10) / 10,
+    hours: Math.round(d.hours * 100) / 100,
     isProductive: d.isProductive,
     color: d.color,
-    pct: 0,
+    category: d.category,
+    pct: total > 0 ? Math.round((d.hours / total) * 100) : 0,
   }));
-  const total = items.reduce((s, i) => s + i.hours, 0);
-  items.forEach(i => { i.pct = total > 0 ? Math.round((i.hours / total) * 100) : 0; });
+
+  if (items.length === 0) return null;
 
   return (
     <Card>
       <CardHeader>
         <CardTitle>Time Distribution (All Time)</CardTitle>
+        <CardDescription>{formatDuration(total)} total tracked</CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
-          <div className="h-[280px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie data={items} cx="50%" cy="50%" innerRadius={70} outerRadius={100} paddingAngle={2} dataKey="hours" stroke="none">
-                  {items.map((e, i) => <Cell key={i} fill={e.color ?? CHART_COLORS[i % CHART_COLORS.length]} />)}
-                </Pie>
-                <Tooltip contentStyle={{ backgroundColor: "hsl(var(--popover))", borderColor: "hsl(var(--border))", borderRadius: "8px" }} formatter={(v: number) => [`${v}h`, "Hours"]} />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-          <div className="space-y-3">
-            {items.map((item, i) => (
-              <div key={i} className="flex items-center justify-between text-sm">
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: item.color ?? CHART_COLORS[i % CHART_COLORS.length] }} />
-                  <span>{item.name}</span>
-                </div>
-                <span className="text-muted-foreground">{item.hours}h ({item.pct}%)</span>
-              </div>
-            ))}
-          </div>
-        </div>
+        <PieChartWithLegend items={items} />
       </CardContent>
     </Card>
   );
@@ -126,6 +219,17 @@ function AuthAnalytics() {
   const improvementPct = monthly?.improvementPct ?? 0;
   const ImprovementIcon = improvementPct > 0 ? TrendingUp : improvementPct < 0 ? TrendingDown : Minus;
   const improvementColor = improvementPct > 0 ? "text-green-500" : improvementPct < 0 ? "text-red-500" : "text-muted-foreground";
+
+  const pieItems: PieItem[] = (breakdown?.items ?? []).map((item, i) => ({
+    name: item.name,
+    hours: item.hours,
+    pct: item.pct,
+    color: item.color || CHART_COLORS[i % CHART_COLORS.length],
+  }));
+
+  const productiveH = breakdown?.productiveHours ?? 0;
+  const nonProductiveH = breakdown?.nonProductiveHours ?? 0;
+  const totalH = productiveH + nonProductiveH;
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto animate-in fade-in duration-500">
@@ -189,7 +293,6 @@ function AuthAnalytics() {
         </Card>
       </div>
 
-      {/* Monthly Recap */}
       {monthly && (
         <Card className="bg-gradient-to-br from-primary/5 to-background border-primary/20">
           <CardHeader>
@@ -207,8 +310,8 @@ function AuthAnalytics() {
                 <p className="text-xs text-muted-foreground mt-1">{monthly.totalActiveDays ?? 0} active days</p>
               </div>
               <div className="bg-card rounded-xl p-4 border border-border/50">
-                <p className="text-xs text-muted-foreground mb-1">Avg Productive Hours</p>
-                <p className="text-2xl font-bold">{monthly.avgProductiveHours ?? 0}h</p>
+                <p className="text-xs text-muted-foreground mb-1">Avg Productive</p>
+                <p className="text-2xl font-bold">{formatDuration(monthly.avgProductiveHours ?? 0)}</p>
                 <p className="text-xs text-muted-foreground mt-1">per active day</p>
               </div>
               <div className="bg-card rounded-xl p-4 border border-border/50">
@@ -230,14 +333,13 @@ function AuthAnalytics() {
         </Card>
       )}
 
-      {/* Time Distribution with date range filter */}
       <Card>
         <CardHeader>
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
               <CardTitle>Time Distribution</CardTitle>
               <CardDescription>
-                {breakdown?.productivePct ?? 0}% productive · {breakdown?.productiveHours ?? 0}h productive / {(breakdown?.productiveHours ?? 0) + (breakdown?.nonProductiveHours ?? 0)}h total
+                {breakdown?.productivePct ?? 0}% productive · {formatDuration(productiveH)} productive / {formatDuration(totalH)} total
               </CardDescription>
             </div>
             <Select value={dateRange} onValueChange={(v) => setDateRange(v as GetActivityBreakdownDateRange)}>
@@ -253,50 +355,8 @@ function AuthAnalytics() {
           </div>
         </CardHeader>
         <CardContent>
-          {breakdown?.items && breakdown.items.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
-              <div className="h-[280px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie
-                      data={breakdown.items}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={80}
-                      outerRadius={110}
-                      paddingAngle={2}
-                      dataKey="hours"
-                      stroke="none"
-                    >
-                      {breakdown.items.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.color || CHART_COLORS[index % CHART_COLORS.length]} />
-                      ))}
-                    </Pie>
-                    <Tooltip
-                      contentStyle={{ backgroundColor: "hsl(var(--popover))", borderColor: "hsl(var(--border))", borderRadius: "8px" }}
-                      formatter={(value: number) => [`${value} hours`, "Time Spent"]}
-                    />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-              <div className="space-y-3 max-h-[280px] overflow-y-auto">
-                {breakdown.items.map((item, i) => (
-                  <div key={i} className="flex items-center justify-between text-sm">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: item.color || CHART_COLORS[i % CHART_COLORS.length] }} />
-                      <span className="truncate">{item.name}</span>
-                      {item.isProductive && (
-                        <span className="hidden sm:inline text-[10px] uppercase bg-primary/20 text-primary px-1.5 py-0.5 rounded-sm flex-shrink-0">Prod</span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-3 text-muted-foreground flex-shrink-0 ml-2">
-                      <span>{item.hours}h</span>
-                      <span className="w-10 text-right">{item.pct}%</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
+          {pieItems.length > 0 ? (
+            <PieChartWithLegend items={pieItems} />
           ) : (
             <div className="h-48 flex items-center justify-center text-muted-foreground text-sm">
               No activities logged in this time range

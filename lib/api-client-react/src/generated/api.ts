@@ -577,6 +577,76 @@ export function useListActivities<TData = Awaited<ReturnType<typeof listActiviti
 
 
 
+export const getDeleteAllActivitiesUrl = () => {
+
+
+
+
+  return `/api/activities`
+}
+
+/**
+ * @summary Delete all activities for the current user
+ */
+export const deleteAllActivities = async ( options?: RequestInit): Promise<void> => {
+
+  return customFetch<void>(getDeleteAllActivitiesUrl(),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+export const getDeleteAllActivitiesMutationOptions = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteAllActivities>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteAllActivities>>, TError,void, TContext> => {
+
+const mutationKey = ['deleteAllActivities'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteAllActivities>>, void> = () => {
+
+
+          return  deleteAllActivities(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteAllActivitiesMutationResult = NonNullable<Awaited<ReturnType<typeof deleteAllActivities>>>
+
+    export type DeleteAllActivitiesMutationError = ErrorType<unknown>
+
+    /**
+ * @summary Delete all activities for the current user
+ */
+export const useDeleteAllActivities = <TError = ErrorType<unknown>,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteAllActivities>>, TError,void, TContext>, request?: SecondParameter<typeof customFetch>}
+ ): UseMutationResult<
+        Awaited<ReturnType<typeof deleteAllActivities>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getDeleteAllActivitiesMutationOptions(options));
+    }
+
 export const getCreateActivityUrl = () => {
 
 

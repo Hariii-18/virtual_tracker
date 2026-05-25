@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { useGetHistory } from "@workspace/api-client-react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, Calendar as CalendarIcon } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { GetHistoryGroupBy } from "@workspace/api-client-react";
+import { formatDuration } from "@/lib/format";
 
 export default function History() {
   const [groupBy, setGroupBy] = useState<GetHistoryGroupBy>(GetHistoryGroupBy.day);
@@ -56,14 +57,14 @@ export default function History() {
               {historyData.slice(0, 30).map((entry, i) => {
                 const intensity = Math.min(Math.floor(entry.score / 20), 4);
                 return (
-                  <div 
+                  <div
                     key={i}
                     title={`${entry.date}: Score ${entry.score}`}
-                    className={`w-4 h-4 rounded-sm transition-colors cursor-help 
-                      ${intensity === 0 ? 'bg-secondary' : 
-                        intensity === 1 ? 'bg-primary/30' : 
-                        intensity === 2 ? 'bg-primary/50' : 
-                        intensity === 3 ? 'bg-primary/80' : 
+                    className={`w-4 h-4 rounded-sm transition-colors cursor-help
+                      ${intensity === 0 ? 'bg-secondary' :
+                        intensity === 1 ? 'bg-primary/30' :
+                        intensity === 2 ? 'bg-primary/50' :
+                        intensity === 3 ? 'bg-primary/80' :
                         'bg-primary'}`}
                   />
                 );
@@ -94,8 +95,8 @@ export default function History() {
                   <p className="font-medium">{entry.completedActivities} / {entry.totalActivities}</p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground text-xs uppercase tracking-wider">Productive Hrs</p>
-                  <p className="font-medium">{entry.productiveHours}h</p>
+                  <p className="text-muted-foreground text-xs uppercase tracking-wider">Productive Time</p>
+                  <p className="font-medium">{formatDuration(entry.productiveHours)}</p>
                 </div>
               </div>
 
@@ -108,7 +109,9 @@ export default function History() {
                         <span className={log.completed ? "text-foreground" : "text-muted-foreground line-through"}>
                           {log.activityName || `Activity #${log.activityId}`}
                         </span>
-                        {log.hoursSpent ? <span className="text-xs font-medium text-muted-foreground">{log.hoursSpent}h</span> : null}
+                        {log.hoursSpent
+                          ? <span className="text-xs font-medium text-muted-foreground">{formatDuration(log.hoursSpent)}</span>
+                          : null}
                       </div>
                     ))}
                   </div>

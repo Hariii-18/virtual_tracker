@@ -146,6 +146,13 @@ paths:
                 type: array
                 items:
                   $ref: "#/components/schemas/Activity"
+    delete:
+      operationId: deleteAllActivities
+      tags: [activities]
+      summary: Delete all activities for the current user
+      responses:
+        "204":
+          description: All activities deleted
     post:
       operationId: createActivity
       tags: [activities]

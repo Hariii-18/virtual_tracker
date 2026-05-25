@@ -15,6 +15,7 @@ interface GuestContextValue {
   deleteActivity: (id: number) => void;
   upsertLog: (activityId: number, completed: boolean, hoursSpent?: number | null) => void;
   seedProfessionActivities: (profession: string) => GuestActivity[];
+  deleteAllActivities: () => void;
   refresh: () => void;
 }
 
@@ -78,6 +79,11 @@ export function GuestProvider({ children }: { children: ReactNode }) {
     return seeded;
   }, []);
 
+  const deleteAllActivities = useCallback(() => {
+    guestStore.deleteAllActivities();
+    setActivities([]);
+  }, []);
+
   useEffect(() => {
     const handler = () => {
       if (guestStore.isGuest()) refresh();
@@ -101,6 +107,7 @@ export function GuestProvider({ children }: { children: ReactNode }) {
       deleteActivity,
       upsertLog,
       seedProfessionActivities,
+      deleteAllActivities,
       refresh,
     }}>
       {children}
