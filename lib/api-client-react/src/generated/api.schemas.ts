@@ -122,6 +122,9 @@ export interface Activity {
   targetHours?: number | null;
   /** @nullable */
   color?: string | null;
+  isGenerated?: boolean;
+  /** @nullable */
+  generatedFromProfession?: string | null;
 }
 
 export interface ActivityInput {
@@ -133,6 +136,9 @@ export interface ActivityInput {
   targetHours?: number | null;
   /** @nullable */
   color?: string | null;
+  isGenerated?: boolean;
+  /** @nullable */
+  generatedFromProfession?: string | null;
 }
 
 export interface ActivityUpdate {
@@ -143,6 +149,9 @@ export interface ActivityUpdate {
   targetHours?: number | null;
   /** @nullable */
   color?: string | null;
+  isGenerated?: boolean;
+  /** @nullable */
+  generatedFromProfession?: string | null;
 }
 
 export interface LogEntry {

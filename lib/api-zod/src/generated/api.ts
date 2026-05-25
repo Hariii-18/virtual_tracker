@@ -122,7 +122,9 @@ export const ListActivitiesResponseItem = zod.object({
   "category": zod.string(),
   "isProductive": zod.boolean(),
   "targetHours": zod.number().nullish(),
-  "color": zod.string().nullish()
+  "color": zod.string().nullish(),
+  "isGenerated": zod.boolean().optional(),
+  "generatedFromProfession": zod.string().nullish()
 })
 export const ListActivitiesResponse = zod.array(ListActivitiesResponseItem)
 
@@ -138,7 +140,9 @@ export const CreateActivityBody = zod.object({
   "category": zod.string(),
   "isProductive": zod.boolean(),
   "targetHours": zod.number().nullish(),
-  "color": zod.string().nullish()
+  "color": zod.string().nullish(),
+  "isGenerated": zod.boolean().optional(),
+  "generatedFromProfession": zod.string().nullish()
 })
 
 
@@ -154,7 +158,9 @@ export const UpdateActivityBody = zod.object({
   "category": zod.string().optional(),
   "isProductive": zod.boolean().optional(),
   "targetHours": zod.number().nullish(),
-  "color": zod.string().nullish()
+  "color": zod.string().nullish(),
+  "isGenerated": zod.boolean().optional(),
+  "generatedFromProfession": zod.string().nullish()
 })
 
 export const UpdateActivityResponse = zod.object({
@@ -164,7 +170,9 @@ export const UpdateActivityResponse = zod.object({
   "category": zod.string(),
   "isProductive": zod.boolean(),
   "targetHours": zod.number().nullish(),
-  "color": zod.string().nullish()
+  "color": zod.string().nullish(),
+  "isGenerated": zod.boolean().optional(),
+  "generatedFromProfession": zod.string().nullish()
 })
 
 

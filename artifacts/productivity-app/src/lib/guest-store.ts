@@ -9,8 +9,9 @@ function nextId() {
 }
 
 const ACTIVITY_COLORS = [
-  "#6366f1", "#8b5cf6", "#3b82f6", "#10b981", "#f59e0b",
-  "#ef4444", "#ec4899", "#14b8a6", "#f97316", "#84cc16",
+  "#6366f1", "#ef4444", "#10b981", "#f59e0b", "#8b5cf6",
+  "#3b82f6", "#ec4899", "#14b8a6", "#f97316", "#84cc16",
+  "#dc2626", "#7c3aed", "#059669", "#d97706", "#db2777",
 ];
 
 export interface GuestActivity {
@@ -21,6 +22,8 @@ export interface GuestActivity {
   isProductive: boolean;
   targetHours: number | null;
   color: string | null;
+  isGenerated: boolean;
+  generatedFromProfession: string | null;
 }
 
 export interface GuestLog {
@@ -67,6 +70,49 @@ const DEFAULT_PROFILE: GuestProfile = {
   sleepTarget: null,
 };
 
+const PROFESSION_TEMPLATES: Record<string, Array<{ name: string; category: string; isProductive: boolean }>> = {
+  Student: [
+    { name: "Study", category: "Education", isProductive: true },
+    { name: "School / College", category: "Education", isProductive: true },
+    { name: "Reading", category: "Education", isProductive: true },
+    { name: "Coding", category: "Education", isProductive: true },
+    { name: "Gym", category: "Health", isProductive: true },
+    { name: "Sports", category: "Health", isProductive: true },
+    { name: "Sleep", category: "Health", isProductive: true },
+    { name: "Social Media", category: "Leisure", isProductive: false },
+  ],
+  Employee: [
+    { name: "Office Work", category: "Work", isProductive: true },
+    { name: "Meetings", category: "Work", isProductive: true },
+    { name: "Learning", category: "Education", isProductive: true },
+    { name: "Gym", category: "Health", isProductive: true },
+    { name: "Sleep", category: "Health", isProductive: true },
+    { name: "Family Time", category: "Personal", isProductive: true },
+    { name: "Commute", category: "Travel", isProductive: false },
+    { name: "Social Media", category: "Leisure", isProductive: false },
+  ],
+  Freelancer: [
+    { name: "Client Work", category: "Work", isProductive: true },
+    { name: "Coding", category: "Work", isProductive: true },
+    { name: "Marketing", category: "Work", isProductive: true },
+    { name: "Networking", category: "Work", isProductive: true },
+    { name: "Learning", category: "Education", isProductive: true },
+    { name: "Gym", category: "Health", isProductive: true },
+    { name: "Sleep", category: "Health", isProductive: true },
+    { name: "Social Media", category: "Leisure", isProductive: false },
+  ],
+  Athlete: [
+    { name: "Training", category: "Sport", isProductive: true },
+    { name: "Gym", category: "Sport", isProductive: true },
+    { name: "Cardio", category: "Sport", isProductive: true },
+    { name: "Practice", category: "Sport", isProductive: true },
+    { name: "Recovery", category: "Health", isProductive: true },
+    { name: "Nutrition", category: "Health", isProductive: true },
+    { name: "Sleep", category: "Health", isProductive: true },
+    { name: "Mental Training", category: "Education", isProductive: true },
+  ],
+};
+
 export const guestStore = {
   isGuest: () => localStorage.getItem(GUEST_MODE_KEY) === "true",
 
@@ -103,11 +149,12 @@ export const guestStore = {
 
   addActivity(data: Omit<GuestActivity, "id" | "userId">): GuestActivity {
     const activities = this.getActivities();
+    const manualActivities = activities.filter(a => !a.isGenerated);
     const activity: GuestActivity = {
       ...data,
       id: nextId(),
       userId: 0,
-      color: data.color ?? ACTIVITY_COLORS[activities.length % ACTIVITY_COLORS.length],
+      color: data.color ?? ACTIVITY_COLORS[manualActivities.length % ACTIVITY_COLORS.length],
     };
     activities.push(activity);
     this.saveActivities(activities);
@@ -170,54 +217,28 @@ export const guestStore = {
   },
 
   seedActivities(profession: string): GuestActivity[] {
-    const TEMPLATES: Record<string, Array<{ name: string; category: string; isProductive: boolean }>> = {
-      Student: [
-        { name: "Study", category: "Education", isProductive: true },
-        { name: "School / College", category: "Education", isProductive: true },
-        { name: "Reading", category: "Education", isProductive: true },
-        { name: "Coding", category: "Education", isProductive: true },
-        { name: "Gym", category: "Health", isProductive: true },
-        { name: "Sports", category: "Health", isProductive: true },
-        { name: "Sleep", category: "Health", isProductive: true },
-        { name: "Social Media", category: "Leisure", isProductive: false },
-      ],
-      Employee: [
-        { name: "Office Work", category: "Work", isProductive: true },
-        { name: "Meetings", category: "Work", isProductive: true },
-        { name: "Learning", category: "Education", isProductive: true },
-        { name: "Gym", category: "Health", isProductive: true },
-        { name: "Sleep", category: "Health", isProductive: true },
-        { name: "Family Time", category: "Personal", isProductive: true },
-        { name: "Commute", category: "Travel", isProductive: false },
-        { name: "Social Media", category: "Leisure", isProductive: false },
-      ],
-      Freelancer: [
-        { name: "Client Work", category: "Work", isProductive: true },
-        { name: "Coding", category: "Work", isProductive: true },
-        { name: "Marketing", category: "Work", isProductive: true },
-        { name: "Networking", category: "Work", isProductive: true },
-        { name: "Learning", category: "Education", isProductive: true },
-        { name: "Gym", category: "Health", isProductive: true },
-        { name: "Sleep", category: "Health", isProductive: true },
-        { name: "Social Media", category: "Leisure", isProductive: false },
-      ],
-      Athlete: [
-        { name: "Training", category: "Sport", isProductive: true },
-        { name: "Gym", category: "Sport", isProductive: true },
-        { name: "Cardio", category: "Sport", isProductive: true },
-        { name: "Practice", category: "Sport", isProductive: true },
-        { name: "Recovery", category: "Health", isProductive: true },
-        { name: "Nutrition", category: "Health", isProductive: true },
-        { name: "Sleep", category: "Health", isProductive: true },
-        { name: "Mental Training", category: "Education", isProductive: true },
-      ],
-    };
+    const templates = PROFESSION_TEMPLATES[profession] ?? [];
 
-    const templates = TEMPLATES[profession] ?? [];
-    const existing = this.getActivities();
-    const existingNames = new Set(existing.map((a) => a.name.toLowerCase()));
+    // Remove all previously generated activities (replace, not append)
+    const all = this.getActivities();
+    const manual = all.filter(a => !a.isGenerated);
+    this.saveActivities(manual);
 
-    const toAdd = templates.filter((t) => !existingNames.has(t.name.toLowerCase()));
-    return toAdd.map((t) => this.addActivity({ ...t, color: null, targetHours: null }));
+    // Insert new generated activities
+    return templates.map((t, i) => {
+      const activity: GuestActivity = {
+        ...t,
+        id: nextId(),
+        userId: 0,
+        targetHours: null,
+        color: ACTIVITY_COLORS[(manual.length + i) % ACTIVITY_COLORS.length],
+        isGenerated: true,
+        generatedFromProfession: profession,
+      };
+      const current = this.getActivities();
+      current.push(activity);
+      this.saveActivities(current);
+      return activity;
+    });
   },
 };

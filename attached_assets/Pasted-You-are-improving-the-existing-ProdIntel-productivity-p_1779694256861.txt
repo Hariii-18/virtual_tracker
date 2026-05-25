@@ -1,0 +1,277 @@
+You are improving the existing "ProdIntel" productivity platform implementation. Preserve the current UI design, theme, layout style, cards, sidebar styling, analytics appearance, and overall modern aesthetic. Do NOT redesign the application.
+
+Carefully implement the following fixes and improvements based on current behavior and screenshots.
+
+---
+
+## PROFESSION-BASED ACTIVITY GENERATION FIX
+
+1. Current issue:
+   When user changes profession and clicks auto-generate activities, the new profession activities are being ADDED to the previous activities instead of replacing them.
+
+2. Fix behavior:
+   When user selects a new profession and generates activities:
+
+* remove previously auto-generated profession activities
+* replace them completely with the new profession's activities
+* do NOT merge with old generated activities
+
+3. Important:
+
+* manually added user activities should NOT be deleted automatically
+* only previously auto-generated profession activities should be replaced
+
+4. Suggested implementation:
+
+* distinguish generated activities vs manually created activities using metadata/flag
+* example:
+  isGenerated: true
+  generatedFromProfession: "Student"
+
+5. Example:
+   If user changes from Student → Employee:
+
+* remove old generated Student activities
+* generate Employee activities only
+* keep manually added custom activities untouched
+
+---
+
+## PROFILE PERSISTENCE FIX
+
+6. Current issue:
+   Profession and gender are NOT persisting after refresh/login.
+
+7. Fix persistence completely:
+
+* profession must save properly
+* gender must save properly
+* refresh should retain values
+* logout/login should retain values
+* profile API/database synchronization should work correctly
+
+8. Verify:
+
+* frontend form state
+* backend persistence
+* API update endpoints
+* database save
+* hydration on page load
+
+9. Ensure dropdown selected values are restored correctly after refresh.
+
+---
+
+## AI INSIGHTS / RECOMMENDATIONS IMPROVEMENT
+
+10. Current AI insights are too generic.
+
+11. Improve insights engine so recommendations are generated dynamically based on:
+
+* productive hours
+* wasted hours
+* consistency
+* sleep balance
+* activity patterns
+* inactivity
+* excessive entertainment/non-productive time
+* missing goals
+
+12. Examples:
+
+* If user wastes too much time:
+  "You spent 5.5 hours on low-productivity activities this week. Consider reducing entertainment time by 1 hour daily."
+
+* If sleep is poor:
+  "Your average sleep is below your target. Poor recovery may reduce productivity."
+
+* If consistency improved:
+  "Your productivity consistency improved by 12% compared to last week."
+
+13. Areas-to-improve section should dynamically update using actual productivity analytics.
+
+14. Add intelligent recommendations:
+
+* better sleep
+* work-life balance
+* consistency
+* study improvement
+* reduced distractions
+* exercise suggestions
+
+15. Preserve clean card UI.
+
+---
+
+## ANALYTICS CALCULATION FIXES
+
+16. Current issue:
+    Weekly performance and monthly trends appear unrealistic and directly show high values like 100.
+
+17. Fix analytics calculations to be based on REAL productivity data.
+
+18. Productivity score should calculate using:
+
+* productive activity hours
+* wasted hours
+* sleep consistency
+* goal completion
+* activity consistency
+* streaks
+
+19. Example productivity formula:
+
+* Productive hours ratio
+* Goal completion %
+* Sleep target achievement
+* Weekly consistency
+* Weighted productivity score
+
+20. Ensure charts dynamically update from actual stored user data.
+
+21. Monthly trend should:
+
+* increase/decrease based on real performance
+* not use hardcoded/demo values
+
+---
+
+## PIE CHART COLOR IMPROVEMENTS
+
+22. Current issue:
+    Pie chart uses visually similar colors causing confusion.
+
+23. Use clearly distinguishable colors for each activity.
+
+24. Requirements:
+
+* every activity slice should use a highly distinct color
+* avoid very similar shades
+* maintain aesthetic appearance
+* support dark/light consistency
+
+25. Suggested palette approach:
+
+* generate colors from large distinct palette
+* avoid adjacent similar hues
+
+26. Example distinct colors:
+
+* blue
+* red
+* green
+* orange
+* purple
+* teal
+* yellow
+* pink
+* cyan
+* brown
+
+27. Legend colors must exactly match chart slices.
+
+---
+
+## RESPONSIVE SIDEBAR IMPROVEMENT
+
+28. Current issue:
+    Hamburger sidebar appears even on large laptop/desktop screens.
+
+29. Fix responsive behavior:
+
+* Large screens:
+  show permanent left sidebar normally
+  NO hamburger menu needed
+
+* Tablet/mobile:
+  use collapsible hamburger menu
+
+30. Use responsive breakpoints properly.
+
+31. Desktop:
+
+* fixed sidebar visible
+* full dashboard layout
+
+32. Mobile:
+
+* collapsible sidebar overlay
+* smooth animations
+* close on outside click
+
+---
+
+## USER EMAIL DISPLAY
+
+33. Above Logout button:
+    display logged-in user email.
+
+34. Example:
+    [hari@example.com](mailto:hari@example.com)
+
+35. Style:
+
+* subtle
+* smaller text
+* visually aligned with sidebar
+* not too dominant
+
+---
+
+## ADDITIONAL VALIDATION
+
+36. Verify all persistence logic works for:
+
+* guest users
+* authenticated users
+* refresh
+* login/logout
+* route changes
+
+37. Ensure analytics calculations do not break if:
+
+* no activities exist
+* low data exists
+* partial profile exists
+
+38. Ensure no duplicate generated activities appear.
+
+39. Ensure profession switching behaves cleanly.
+
+---
+
+## IMPLEMENTATION RULES
+
+40. Do NOT redesign the entire app.
+
+41. Preserve:
+
+* purple/white theme
+* current cards
+* spacing
+* modern appearance
+* animations
+* typography
+
+42. Maintain modular clean architecture.
+
+43. Ensure zero TypeScript errors.
+
+44. Test:
+
+* desktop responsiveness
+* mobile responsiveness
+* profession switching
+* profile persistence
+* analytics calculations
+* insights generation
+* pie chart rendering
+
+45. After implementation provide summary:
+
+* files changed
+* persistence fixes
+* analytics improvements
+* sidebar responsiveness improvements
+* AI insight enhancements
+* profession generation logic changes

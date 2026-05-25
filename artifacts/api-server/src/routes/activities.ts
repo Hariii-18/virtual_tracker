@@ -5,8 +5,9 @@ import { CreateActivityBody, UpdateActivityBody, UpdateActivityParams, DeleteAct
 import { requireAuth } from "../lib/auth";
 
 const ACTIVITY_COLORS = [
-  "#6366f1", "#8b5cf6", "#3b82f6", "#10b981", "#f59e0b",
-  "#ef4444", "#ec4899", "#14b8a6", "#f97316", "#84cc16"
+  "#6366f1", "#ef4444", "#10b981", "#f59e0b", "#8b5cf6",
+  "#3b82f6", "#ec4899", "#14b8a6", "#f97316", "#84cc16",
+  "#dc2626", "#7c3aed", "#059669", "#d97706", "#db2777",
 ];
 
 const PROFESSION_ACTIVITIES: Record<string, Array<{ name: string; category: string; isProductive: boolean }>> = {
@@ -75,6 +76,8 @@ router.post("/activities", requireAuth, async (req, res): Promise<void> => {
     ...parsed.data,
     userId,
     color,
+    isGenerated: false,
+    generatedFromProfession: null,
   }).returning();
 
   res.status(201).json(activity);
@@ -90,20 +93,26 @@ router.post("/activities/seed", requireAuth, async (req, res): Promise<void> => 
     return;
   }
 
-  const existing = await db.select().from(activitiesTable).where(eq(activitiesTable.userId, userId));
-  const existingNames = new Set(existing.map(a => a.name.toLowerCase()));
-
-  const toInsert = templates.filter(t => !existingNames.has(t.name.toLowerCase()));
-  if (toInsert.length === 0) {
-    res.status(201).json([]);
-    return;
+  // Remove previously auto-generated activities for any profession (replace, not append)
+  const allActivities = await db.select().from(activitiesTable).where(eq(activitiesTable.userId, userId));
+  const generatedActivities = allActivities.filter(a => a.isGenerated);
+  if (generatedActivities.length > 0) {
+    for (const ga of generatedActivities) {
+      await db.delete(activitiesTable).where(and(eq(activitiesTable.id, ga.id), eq(activitiesTable.userId, userId)));
+    }
   }
 
+  // Get remaining manual activities for color offset
+  const manualActivities = await db.select().from(activitiesTable).where(eq(activitiesTable.userId, userId));
+
+  // Insert new generated activities
   const seeded = await db.insert(activitiesTable).values(
-    toInsert.map((t, i) => ({
+    templates.map((t, i) => ({
       ...t,
       userId,
-      color: ACTIVITY_COLORS[(existing.length + i) % ACTIVITY_COLORS.length],
+      color: ACTIVITY_COLORS[(manualActivities.length + i) % ACTIVITY_COLORS.length],
+      isGenerated: true,
+      generatedFromProfession: profession,
     }))
   ).returning();
 

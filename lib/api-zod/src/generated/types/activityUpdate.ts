@@ -14,4 +14,7 @@ export interface ActivityUpdate {
   targetHours?: number | null;
   /** @nullable */
   color?: string | null;
+  isGenerated?: boolean;
+  /** @nullable */
+  generatedFromProfession?: string | null;
 }

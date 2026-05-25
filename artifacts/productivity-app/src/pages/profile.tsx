@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useGetProfile, useUpdateProfile, useSeedActivities } from "@workspace/api-client-react";
+import { useGetProfile, useUpdateProfile, useSeedActivities, getGetProfileQueryKey } from "@workspace/api-client-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
@@ -27,15 +27,20 @@ const profileSchema = z.object({
   sleepTarget: z.coerce.number().min(4).max(16).optional().or(z.literal("")),
 });
 
-function GuestProfile() {
+type ProfileFormValues = z.infer<typeof profileSchema>;
+
+const NONE_VALUE = "__none__";
+
+function GuestProfilePage() {
   const { profile, updateProfile, seedProfessionActivities } = useGuest();
   const { toast } = useToast();
+  const [prevProfession, setPrevProfession] = useState(profile.profession);
 
-  const form = useForm<z.infer<typeof profileSchema>>({
+  const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileSchema),
     defaultValues: {
       name: profile.name || "",
-      profession: (profile.profession ?? undefined) as Exclude<ProfileUpdateProfession, null> | undefined,
+      profession: (profile.profession as ProfileUpdateProfession | undefined) ?? undefined,
       customProfession: profile.customProfession || "",
       age: profile.age ?? "",
       gender: profile.gender || "",
@@ -50,11 +55,11 @@ function GuestProfile() {
   const selectedProfession = form.watch("profession");
   const showCustomField = selectedProfession === ProfileUpdateProfession.Custom;
 
-  const onSubmit = (values: z.infer<typeof profileSchema>) => {
-    const prevProfession = profile.profession;
+  const onSubmit = (values: ProfileFormValues) => {
+    const prof = values.profession || null;
     updateProfile({
       name: values.name,
-      profession: values.profession ?? null,
+      profession: prof,
       customProfession: values.customProfession || null,
       age: values.age === "" ? null : Number(values.age),
       gender: values.gender || null,
@@ -65,20 +70,26 @@ function GuestProfile() {
       sleepTarget: values.sleepTarget === "" ? null : Number(values.sleepTarget),
     });
 
-    if (values.profession && values.profession !== ProfileUpdateProfession.Custom && values.profession !== prevProfession) {
-      seedProfessionActivities(values.profession);
-      toast({ title: "Activities added!", description: `Predefined activities for ${values.profession} have been added.` });
+    if (prof && prof !== ProfileUpdateProfession.Custom && prof !== prevProfession) {
+      setPrevProfession(prof);
+      seedProfessionActivities(prof);
+      toast({ title: "Activities updated!", description: `Activities replaced with ${prof} defaults.` });
+    } else {
+      toast({ title: "Profile saved", description: "Your profile has been updated locally." });
     }
-
-    toast({ title: "Profile saved", description: "Your profile has been updated locally." });
   };
 
   return (
-    <ProfileForm form={form} onSubmit={onSubmit} isPending={false} showCustomField={showCustomField} isGuest />
+    <ProfileForm
+      form={form}
+      onSubmit={onSubmit}
+      isPending={false}
+      showCustomField={showCustomField}
+    />
   );
 }
 
-function AuthProfile() {
+function AuthProfilePage() {
   const { data: profile, isLoading } = useGetProfile();
   const updateProfileMutation = useUpdateProfile();
   const seedActivitiesMutation = useSeedActivities();
@@ -86,7 +97,7 @@ function AuthProfile() {
   const queryClient = useQueryClient();
   const [prevProfession, setPrevProfession] = useState<string | null>(null);
 
-  const form = useForm<z.infer<typeof profileSchema>>({
+  const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileSchema),
     defaultValues: {
       name: "",
@@ -110,10 +121,10 @@ function AuthProfile() {
       setPrevProfession(profile.profession ?? null);
       form.reset({
         name: profile.name || "",
-        profession: (profile.profession ?? undefined) as Exclude<ProfileUpdateProfession, null> | undefined,
+        profession: (profile.profession as ProfileUpdateProfession | undefined) ?? undefined,
         customProfession: profile.customProfession || "",
         age: profile.age ?? "",
-        gender: profile.gender || "",
+        gender: profile.gender ?? "",
         height: profile.height ?? "",
         weight: profile.weight ?? "",
         goals: profile.goals || "",
@@ -131,29 +142,38 @@ function AuthProfile() {
     );
   }
 
-  const onSubmit = (values: z.infer<typeof profileSchema>) => {
-    const cleanedData = {
-      ...values,
+  const onSubmit = (values: ProfileFormValues) => {
+    const prof = values.profession || null;
+
+    // Build the body as plain object — backend handles null/empty explicitly
+    const body: Record<string, unknown> = {
+      name: values.name || undefined,
+      profession: prof,
+      customProfession: values.customProfession || null,
       age: values.age === "" ? null : Number(values.age),
+      gender: values.gender || null,
       height: values.height === "" ? null : Number(values.height),
       weight: values.weight === "" ? null : Number(values.weight),
-      sleepTarget: values.sleepTarget === "" ? null : Number(values.sleepTarget),
+      goals: values.goals || null,
       wakeUpTime: values.wakeUpTime === "" ? null : (values.wakeUpTime ?? null),
-      customProfession: values.customProfession || null,
+      sleepTarget: values.sleepTarget === "" ? null : Number(values.sleepTarget),
     };
 
-    updateProfileMutation.mutate({ data: cleanedData }, {
-      onSuccess: (updated) => {
-        queryClient.invalidateQueries();
+    updateProfileMutation.mutate({ data: body as Parameters<typeof updateProfileMutation.mutate>[0]["data"] }, {
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: getGetProfileQueryKey() });
         toast({ title: "Profile saved!", description: "Your profile has been updated." });
 
-        if (values.profession && values.profession !== ProfileUpdateProfession.Custom && values.profession !== prevProfession) {
-          setPrevProfession(values.profession);
-          seedActivitiesMutation.mutate({ data: { profession: values.profession } }, {
+        if (prof && prof !== ProfileUpdateProfession.Custom && prof !== prevProfession) {
+          setPrevProfession(prof);
+          seedActivitiesMutation.mutate({ data: { profession: prof } }, {
             onSuccess: (seeded) => {
-              if (seeded.length > 0) {
-                toast({ title: "Activities added!", description: `${seeded.length} predefined activities added for ${values.profession}.` });
-              }
+              toast({
+                title: "Activities updated!",
+                description: seeded.length > 0
+                  ? `Replaced generated activities with ${seeded.length} ${prof} defaults.`
+                  : "Generated activities already up to date.",
+              });
             },
           });
         }
@@ -170,7 +190,6 @@ function AuthProfile() {
       onSubmit={onSubmit}
       isPending={updateProfileMutation.isPending}
       showCustomField={showCustomField}
-      isGuest={false}
     />
   );
 }
@@ -181,12 +200,14 @@ function ProfileForm({
   isPending,
   showCustomField,
 }: {
-  form: ReturnType<typeof useForm<z.infer<typeof profileSchema>>>;
-  onSubmit: (values: z.infer<typeof profileSchema>) => void;
+  form: ReturnType<typeof useForm<ProfileFormValues>>;
+  onSubmit: (values: ProfileFormValues) => void;
   isPending: boolean;
   showCustomField: boolean;
-  isGuest: boolean;
 }) {
+  const genderValue = form.watch("gender");
+  const professionValue = form.watch("profession");
+
   return (
     <div className="max-w-3xl mx-auto space-y-6 animate-in fade-in duration-500">
       <div>
@@ -199,7 +220,7 @@ function ProfileForm({
           <Card>
             <CardHeader>
               <CardTitle>Personal Information</CardTitle>
-              <CardDescription>Update your name, age, and other details.</CardDescription>
+              <CardDescription>Your basic details used for personalization.</CardDescription>
             </CardHeader>
             <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               <FormField
@@ -222,13 +243,17 @@ function ProfileForm({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Profession</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value ?? ""}>
+                    <Select
+                      onValueChange={(v) => field.onChange(v === NONE_VALUE ? undefined : v)}
+                      value={field.value ?? NONE_VALUE}
+                    >
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select profession" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
+                        <SelectItem value={NONE_VALUE}>Not specified</SelectItem>
                         <SelectItem value={ProfileUpdateProfession.Student}>Student</SelectItem>
                         <SelectItem value={ProfileUpdateProfession.Employee}>Employee</SelectItem>
                         <SelectItem value={ProfileUpdateProfession.Freelancer}>Freelancer</SelectItem>
@@ -264,7 +289,7 @@ function ProfileForm({
                   <FormItem>
                     <FormLabel>Age</FormLabel>
                     <FormControl>
-                      <Input type="number" placeholder="e.g. 28" {...field} />
+                      <Input type="number" placeholder="e.g. 28" {...field} value={field.value ?? ""} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -277,13 +302,17 @@ function ProfileForm({
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Gender</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value ?? ""}>
+                    <Select
+                      onValueChange={(v) => field.onChange(v === NONE_VALUE ? "" : v)}
+                      value={field.value || NONE_VALUE}
+                    >
                       <FormControl>
                         <SelectTrigger>
                           <SelectValue placeholder="Select gender" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
+                        <SelectItem value={NONE_VALUE}>Not specified</SelectItem>
                         <SelectItem value="Male">Male</SelectItem>
                         <SelectItem value="Female">Female</SelectItem>
                         <SelectItem value="Non-binary">Non-binary</SelectItem>
@@ -300,7 +329,7 @@ function ProfileForm({
           <Card>
             <CardHeader>
               <CardTitle>Health Metrics</CardTitle>
-              <CardDescription>Used for BMI calculation and health tracking.</CardDescription>
+              <CardDescription>Used for BMI calculation and health insights.</CardDescription>
             </CardHeader>
             <CardContent className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               <FormField
@@ -310,7 +339,7 @@ function ProfileForm({
                   <FormItem>
                     <FormLabel>Height (cm)</FormLabel>
                     <FormControl>
-                      <Input type="number" placeholder="e.g. 175" {...field} />
+                      <Input type="number" placeholder="e.g. 175" {...field} value={field.value ?? ""} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -323,7 +352,7 @@ function ProfileForm({
                   <FormItem>
                     <FormLabel>Weight (kg)</FormLabel>
                     <FormControl>
-                      <Input type="number" placeholder="e.g. 70" {...field} />
+                      <Input type="number" placeholder="e.g. 70" {...field} value={field.value ?? ""} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -349,7 +378,7 @@ function ProfileForm({
                   <FormItem>
                     <FormLabel>Sleep Target (hours)</FormLabel>
                     <FormControl>
-                      <Input type="number" placeholder="8" {...field} />
+                      <Input type="number" placeholder="8" {...field} value={field.value ?? ""} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -393,5 +422,5 @@ function ProfileForm({
 
 export default function Profile() {
   const { isGuest } = useGuest();
-  return isGuest ? <GuestProfile /> : <AuthProfile />;
+  return isGuest ? <GuestProfilePage /> : <AuthProfilePage />;
 }

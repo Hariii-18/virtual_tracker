@@ -11,6 +11,8 @@ export const activitiesTable = pgTable("activities", {
   isProductive: boolean("is_productive").notNull().default(true),
   targetHours: real("target_hours"),
   color: text("color"),
+  isGenerated: boolean("is_generated").notNull().default(false),
+  generatedFromProfession: text("generated_from_profession"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow().$onUpdate(() => new Date()),
 });

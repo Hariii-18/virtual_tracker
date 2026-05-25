@@ -14,7 +14,7 @@ interface GuestContextValue {
   updateActivity: (id: number, data: Partial<GuestActivity>) => void;
   deleteActivity: (id: number) => void;
   upsertLog: (activityId: number, completed: boolean, hoursSpent?: number | null) => void;
-  seedProfessionActivities: (profession: string) => void;
+  seedProfessionActivities: (profession: string) => GuestActivity[];
   refresh: () => void;
 }
 
@@ -72,9 +72,10 @@ export function GuestProvider({ children }: { children: ReactNode }) {
     setAllLogs(guestStore.getLogs());
   }, []);
 
-  const seedProfessionActivities = useCallback((profession: string) => {
-    guestStore.seedActivities(profession);
+  const seedProfessionActivities = useCallback((profession: string): GuestActivity[] => {
+    const seeded = guestStore.seedActivities(profession);
     setActivities(guestStore.getActivities());
+    return seeded;
   }, []);
 
   useEffect(() => {

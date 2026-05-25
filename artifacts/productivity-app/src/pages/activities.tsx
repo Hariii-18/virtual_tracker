@@ -7,15 +7,16 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Plus, Loader2, Edit, Trash2, CheckCircle, XCircle, Wand2 } from "lucide-react";
+import { Plus, Loader2, Edit, Trash2, CheckCircle, XCircle, Wand2, Cpu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import type { Activity } from "@workspace/api-client-react";
+import type { Activity, SeedActivitiesMutationResult } from "@workspace/api-client-react";
 import { useGuest } from "@/contexts/guest-context";
 import type { GuestActivity } from "@/lib/guest-store";
 import { useToast } from "@/hooks/use-toast";
@@ -24,7 +25,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 const activitySchema = z.object({
   name: z.string().min(1, "Name is required"),
   category: z.string().min(1, "Category is required"),
-  isProductive: z.boolean().default(false),
+  isProductive: z.boolean().default(true),
   targetHours: z.coerce.number().min(0).max(24).optional().or(z.literal("")),
 });
 
@@ -41,18 +42,30 @@ function ActivityCard({
   onEdit: (a: AnyActivity) => void;
   onDelete: (id: number) => void;
 }) {
+  const isGenerated = "isGenerated" in activity ? activity.isGenerated : false;
+  const generatedFrom = "generatedFromProfession" in activity ? activity.generatedFromProfession : null;
+
   return (
     <Card className="bg-card hover:shadow-md transition-shadow">
       <CardContent className="p-4">
         <div className="flex items-center justify-between gap-2">
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 flex-wrap">
-              <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: activity.color ?? "#6366f1" }} />
-              <span className="font-medium truncate">{activity.name}</span>
+              <div
+                className="w-3 h-3 rounded-full flex-shrink-0"
+                style={{ backgroundColor: activity.color ?? "#6366f1" }}
+              />
+              <span className="font-medium text-sm truncate">{activity.name}</span>
               {activity.isProductive ? (
-                <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
+                <CheckCircle className="w-3.5 h-3.5 text-green-500 flex-shrink-0" />
               ) : (
-                <XCircle className="w-4 h-4 text-muted-foreground flex-shrink-0" />
+                <XCircle className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0" />
+              )}
+              {isGenerated && (
+                <Badge variant="secondary" className="text-[10px] h-4 px-1.5 flex-shrink-0 gap-0.5">
+                  <Cpu className="w-2.5 h-2.5" />
+                  {generatedFrom ?? "Auto"}
+                </Badge>
               )}
             </div>
             <p className="text-xs text-muted-foreground mt-1 ml-5">
@@ -74,12 +87,15 @@ function ActivityCard({
                 <AlertDialogHeader>
                   <AlertDialogTitle>Delete Activity</AlertDialogTitle>
                   <AlertDialogDescription>
-                    Are you sure you want to delete "{activity.name}"? This action cannot be undone.
+                    Are you sure you want to delete "{activity.name}"? This cannot be undone.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
                   <AlertDialogCancel>Cancel</AlertDialogCancel>
-                  <AlertDialogAction onClick={() => onDelete(activity.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                  <AlertDialogAction
+                    onClick={() => onDelete(activity.id)}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
                     Delete
                   </AlertDialogAction>
                 </AlertDialogFooter>
@@ -107,18 +123,19 @@ function ActivityFormDialog({
 }) {
   const form = useForm<z.infer<typeof activitySchema>>({
     resolver: zodResolver(activitySchema),
-    defaultValues: {
-      name: editActivity?.name ?? "",
-      category: editActivity?.category ?? "",
-      isProductive: editActivity?.isProductive ?? true,
-      targetHours: editActivity?.targetHours ?? "",
-    },
-    values: editActivity ? {
-      name: editActivity.name,
-      category: editActivity.category,
-      isProductive: editActivity.isProductive,
-      targetHours: editActivity.targetHours ?? "",
-    } : undefined,
+    values: editActivity
+      ? {
+          name: editActivity.name,
+          category: editActivity.category,
+          isProductive: editActivity.isProductive,
+          targetHours: editActivity.targetHours ?? "",
+        }
+      : {
+          name: "",
+          category: "",
+          isProductive: true,
+          targetHours: "",
+        },
   });
 
   return (
@@ -184,7 +201,9 @@ function ActivityFormDialog({
               )}
             />
             <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+                Cancel
+              </Button>
               <Button type="submit" disabled={isPending}>
                 {isPending ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
                 {editActivity ? "Save Changes" : "Add Activity"}
@@ -211,6 +230,8 @@ function GuestActivities() {
       isProductive: values.isProductive,
       targetHours: values.targetHours === "" ? null : Number(values.targetHours),
       color: null,
+      isGenerated: false,
+      generatedFromProfession: null,
     };
     if (id !== undefined) {
       updateActivity(id, data);
@@ -226,7 +247,10 @@ function GuestActivities() {
   const handleSeed = () => {
     if (!seedProfession) return;
     const seeded = seedProfessionActivities(seedProfession);
-    toast({ title: "Activities added!", description: `Activities for ${seedProfession} added.` });
+    toast({
+      title: "Activities updated!",
+      description: `Replaced generated activities with ${seeded.length} ${seedProfession} defaults.`,
+    });
   };
 
   return (
@@ -237,11 +261,15 @@ function GuestActivities() {
       editActivity={editActivity}
       setEditActivity={(a) => setEditActivity(a as GuestActivity | null)}
       onSubmit={handleSubmit}
-      onDelete={(id) => { deleteActivity(id); toast({ title: "Activity deleted" }); }}
+      onDelete={(id) => {
+        deleteActivity(id);
+        toast({ title: "Activity deleted" });
+      }}
       isPending={false}
       seedProfession={seedProfession}
       setSeedProfession={setSeedProfession}
       onSeed={handleSeed}
+      isSeedLoading={false}
     />
   );
 }
@@ -258,7 +286,8 @@ function AuthActivities() {
   const [editActivity, setEditActivity] = useState<Activity | null>(null);
   const [seedProfession, setSeedProfession] = useState("");
 
-  const invalidate = () => queryClient.invalidateQueries({ queryKey: getListActivitiesQueryKey() });
+  const invalidate = () =>
+    queryClient.invalidateQueries({ queryKey: getListActivitiesQueryKey() });
 
   const handleSubmit = (values: z.infer<typeof activitySchema>, id?: number) => {
     const data = {
@@ -266,30 +295,57 @@ function AuthActivities() {
       category: values.category,
       isProductive: values.isProductive,
       targetHours: values.targetHours === "" ? null : Number(values.targetHours),
+      isGenerated: false,
     };
     if (id !== undefined) {
-      updateMutation.mutate({ id, data }, {
-        onSuccess: () => { invalidate(); setDialogOpen(false); setEditActivity(null); toast({ title: "Activity updated" }); },
-      });
+      updateMutation.mutate(
+        { id, data },
+        {
+          onSuccess: () => {
+            invalidate();
+            setDialogOpen(false);
+            setEditActivity(null);
+            toast({ title: "Activity updated" });
+          },
+        }
+      );
     } else {
-      createMutation.mutate({ data }, {
-        onSuccess: () => { invalidate(); setDialogOpen(false); toast({ title: "Activity added" }); },
-      });
+      createMutation.mutate(
+        { data },
+        {
+          onSuccess: () => {
+            invalidate();
+            setDialogOpen(false);
+            toast({ title: "Activity added" });
+          },
+        }
+      );
     }
   };
 
   const handleSeed = () => {
     if (!seedProfession) return;
-    seedMutation.mutate({ data: { profession: seedProfession } }, {
-      onSuccess: (seeded) => {
-        invalidate();
-        toast({ title: seeded.length > 0 ? `${seeded.length} activities added!` : "No new activities to add" });
-      },
-    });
+    seedMutation.mutate(
+      { data: { profession: seedProfession } },
+      {
+        onSuccess: () => {
+          invalidate();
+          toast({
+            title: "Activities updated!",
+            description: `${seedProfession} activities generated. Previously auto-generated activities were replaced.`,
+          });
+          setSeedProfession("");
+        },
+      }
+    );
   };
 
   if (isLoading) {
-    return <div className="flex h-[50vh] items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
+    return (
+      <div className="flex h-[50vh] items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
   }
 
   return (
@@ -300,18 +356,34 @@ function AuthActivities() {
       editActivity={editActivity}
       setEditActivity={(a) => setEditActivity(a as Activity | null)}
       onSubmit={handleSubmit}
-      onDelete={(id) => deleteMutation.mutate({ id }, { onSuccess: () => { invalidate(); toast({ title: "Activity deleted" }); } })}
+      onDelete={(id) =>
+        deleteMutation.mutate(
+          { id },
+          { onSuccess: () => { invalidate(); toast({ title: "Activity deleted" }); } }
+        )
+      }
       isPending={createMutation.isPending || updateMutation.isPending}
       seedProfession={seedProfession}
       setSeedProfession={setSeedProfession}
       onSeed={handleSeed}
+      isSeedLoading={seedMutation.isPending}
     />
   );
 }
 
 function ActivitiesView({
-  activities, dialogOpen, setDialogOpen, editActivity, setEditActivity,
-  onSubmit, onDelete, isPending, seedProfession, setSeedProfession, onSeed,
+  activities,
+  dialogOpen,
+  setDialogOpen,
+  editActivity,
+  setEditActivity,
+  onSubmit,
+  onDelete,
+  isPending,
+  seedProfession,
+  setSeedProfession,
+  onSeed,
+  isSeedLoading,
 }: {
   activities: AnyActivity[];
   dialogOpen: boolean;
@@ -324,18 +396,24 @@ function ActivitiesView({
   seedProfession: string;
   setSeedProfession: (v: string) => void;
   onSeed: () => void;
+  isSeedLoading: boolean;
 }) {
-  const productive = activities.filter(a => a.isProductive);
-  const nonProductive = activities.filter(a => !a.isProductive);
+  const productive = activities.filter((a) => a.isProductive);
+  const nonProductive = activities.filter((a) => !a.isProductive);
 
   return (
     <div className="space-y-6 max-w-4xl mx-auto animate-in fade-in duration-500">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h2 className="text-2xl font-bold tracking-tight">Manage Activities</h2>
-          <p className="text-muted-foreground">Create and manage your daily activities.</p>
+          <p className="text-muted-foreground">Create and track your daily activities.</p>
         </div>
-        <Button onClick={() => { setEditActivity(null); setDialogOpen(true); }}>
+        <Button
+          onClick={() => {
+            setEditActivity(null);
+            setDialogOpen(true);
+          }}
+        >
           <Plus className="w-4 h-4 mr-2" />
           Add Activity
         </Button>
@@ -344,19 +422,28 @@ function ActivitiesView({
       <Card className="bg-card">
         <CardContent className="p-4">
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-            <Wand2 className="w-4 h-4 text-primary flex-shrink-0" />
-            <p className="text-sm text-muted-foreground flex-1">Auto-generate activities for a profession:</p>
+            <Wand2 className="w-4 h-4 text-primary flex-shrink-0 mt-0.5 sm:mt-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium">Auto-generate activities</p>
+              <p className="text-xs text-muted-foreground">
+                Selecting a profession replaces all auto-generated activities while keeping your manually added ones.
+              </p>
+            </div>
             <div className="flex items-center gap-2 w-full sm:w-auto">
               <Select value={seedProfession} onValueChange={setSeedProfession}>
                 <SelectTrigger className="w-full sm:w-[150px]">
                   <SelectValue placeholder="Choose..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {PROFESSIONS.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+                  {PROFESSIONS.map((p) => (
+                    <SelectItem key={p} value={p}>
+                      {p}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
-              <Button variant="outline" size="sm" onClick={onSeed} disabled={!seedProfession}>
-                Generate
+              <Button variant="outline" size="sm" onClick={onSeed} disabled={!seedProfession || isSeedLoading}>
+                {isSeedLoading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Generate"}
               </Button>
             </div>
           </div>
@@ -366,7 +453,12 @@ function ActivitiesView({
       {activities.length === 0 ? (
         <div className="text-center py-12 border-2 border-dashed rounded-lg border-muted">
           <p className="text-muted-foreground mb-4">No activities yet. Add your first one!</p>
-          <Button onClick={() => { setEditActivity(null); setDialogOpen(true); }}>
+          <Button
+            onClick={() => {
+              setEditActivity(null);
+              setDialogOpen(true);
+            }}
+          >
             <Plus className="w-4 h-4 mr-2" />
             Add Activity
           </Button>
@@ -380,8 +472,16 @@ function ActivitiesView({
                 Productive ({productive.length})
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {productive.map(a => (
-                  <ActivityCard key={a.id} activity={a} onEdit={(act) => { setEditActivity(act); setDialogOpen(true); }} onDelete={onDelete} />
+                {productive.map((a) => (
+                  <ActivityCard
+                    key={a.id}
+                    activity={a}
+                    onEdit={(act) => {
+                      setEditActivity(act);
+                      setDialogOpen(true);
+                    }}
+                    onDelete={onDelete}
+                  />
                 ))}
               </div>
             </div>
@@ -393,8 +493,16 @@ function ActivitiesView({
                 Non-Productive ({nonProductive.length})
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {nonProductive.map(a => (
-                  <ActivityCard key={a.id} activity={a} onEdit={(act) => { setEditActivity(act); setDialogOpen(true); }} onDelete={onDelete} />
+                {nonProductive.map((a) => (
+                  <ActivityCard
+                    key={a.id}
+                    activity={a}
+                    onEdit={(act) => {
+                      setEditActivity(act);
+                      setDialogOpen(true);
+                    }}
+                    onDelete={onDelete}
+                  />
                 ))}
               </div>
             </div>
@@ -404,7 +512,10 @@ function ActivitiesView({
 
       <ActivityFormDialog
         open={dialogOpen}
-        onOpenChange={(v) => { setDialogOpen(v); if (!v) setEditActivity(null); }}
+        onOpenChange={(v) => {
+          setDialogOpen(v);
+          if (!v) setEditActivity(null);
+        }}
         editActivity={editActivity}
         onSubmit={onSubmit}
         isPending={isPending}

@@ -509,6 +509,10 @@ components:
           type: ["number", "null"]
         color:
           type: ["string", "null"]
+        isGenerated:
+          type: boolean
+        generatedFromProfession:
+          type: ["string", "null"]
 
     ActivityInput:
       type: object
@@ -525,6 +529,10 @@ components:
           type: ["number", "null"]
         color:
           type: ["string", "null"]
+        isGenerated:
+          type: boolean
+        generatedFromProfession:
+          type: ["string", "null"]
 
     ActivityUpdate:
       type: object
@@ -538,6 +546,10 @@ components:
         targetHours:
           type: ["number", "null"]
         color:
+          type: ["string", "null"]
+        isGenerated:
+          type: boolean
+        generatedFromProfession:
           type: ["string", "null"]
 
     LogEntry:

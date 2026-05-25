@@ -1,10 +1,9 @@
 import { useState } from "react";
 import { Link, useLocation } from "wouter";
-import { useGetMe } from "@workspace/api-client-react";
+import { useGetMe, useGetProfile, getGetMeQueryKey, getGetProfileQueryKey } from "@workspace/api-client-react";
 import {
   LayoutDashboard, BarChart2, ListTodo, Lightbulb, History, User, LogOut, Menu, X,
 } from "lucide-react";
-import { getGetMeQueryKey } from "@workspace/api-client-react";
 import { cn } from "@/lib/utils";
 import { removeToken } from "@/lib/auth";
 import { useGuest } from "@/contexts/guest-context";
@@ -24,8 +23,15 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { isGuest, exitGuestMode, profile: guestProfile } = useGuest();
 
-  const { data: user } = useGetMe({ query: { queryKey: getGetMeQueryKey(), enabled: !isGuest, retry: false } });
+  const { data: user } = useGetMe({
+    query: { queryKey: getGetMeQueryKey(), enabled: !isGuest, retry: false },
+  });
+  const { data: profile } = useGetProfile({
+    query: { queryKey: getGetProfileQueryKey(), enabled: !isGuest, retry: false },
+  });
+
   const displayName = isGuest ? guestProfile.name : (user?.name ?? "");
+  const displayEmail = isGuest ? guestProfile.email : (profile?.email ?? user?.email ?? "");
 
   const handleLogout = () => {
     if (isGuest) {
@@ -44,8 +50,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
   const sidebarContent = (
     <div className="flex flex-col h-full">
       <div className="h-16 flex items-center px-6 border-b border-sidebar-border flex-shrink-0">
-        <div className="flex items-center gap-2 text-primary">
-          <BarChart2 className="w-6 h-6" />
+        <div className="flex items-center gap-2">
+          <BarChart2 className="w-6 h-6 text-primary" />
           <span className="font-bold text-lg text-sidebar-foreground">ProdIntel</span>
         </div>
       </div>
@@ -73,10 +79,20 @@ export function Layout({ children }: { children: React.ReactNode }) {
         })}
       </nav>
 
-      <div className="p-4 border-t border-sidebar-border flex-shrink-0">
-        {isGuest && (
-          <div className="mb-2 px-3 py-1.5 text-xs text-muted-foreground bg-muted rounded-md">
-            Guest Mode
+      <div className="p-4 border-t border-sidebar-border flex-shrink-0 space-y-3">
+        {(displayName || displayEmail) && (
+          <div className="px-3 py-2 rounded-lg bg-sidebar-accent/40">
+            {displayName && (
+              <p className="text-sm font-medium text-sidebar-foreground truncate">{displayName}</p>
+            )}
+            {displayEmail && (
+              <p className="text-xs text-muted-foreground truncate mt-0.5">{displayEmail}</p>
+            )}
+            {isGuest && (
+              <span className="inline-block mt-1 text-[10px] uppercase tracking-wider bg-primary/20 text-primary px-1.5 py-0.5 rounded font-semibold">
+                Guest
+              </span>
+            )}
           </div>
         )}
         <button
@@ -92,7 +108,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex min-h-[100dvh] bg-background">
-      {/* Desktop sidebar */}
+      {/* Desktop sidebar — always visible at md+ */}
       <aside className="w-64 border-r border-border bg-sidebar flex-col fixed inset-y-0 left-0 hidden md:flex z-30">
         {sidebarContent}
       </aside>
@@ -126,7 +142,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <GuestBanner />
         <div className="h-14 md:h-16 border-b border-border flex items-center justify-between px-4 md:px-8 bg-card/50 backdrop-blur-sm sticky top-0 z-20">
           <div className="flex items-center gap-3">
-            {/* Mobile hamburger */}
+            {/* Mobile hamburger only — hidden on md+ */}
             <button
               className="md:hidden text-muted-foreground hover:text-foreground transition-colors"
               onClick={() => setSidebarOpen(true)}
@@ -134,14 +150,9 @@ export function Layout({ children }: { children: React.ReactNode }) {
               <Menu className="w-5 h-5" />
             </button>
             <h1 className="text-sm font-medium text-muted-foreground capitalize">
-              {location.split("/")[1] || "Dashboard"}
+              {navItems.find(n => n.href === location)?.label || "Dashboard"}
             </h1>
           </div>
-          {displayName && (
-            <div className="text-sm font-medium truncate max-w-[140px]">
-              {displayName}
-            </div>
-          )}
         </div>
         <div className="flex-1 p-4 md:p-8 overflow-x-hidden">
           {children}
